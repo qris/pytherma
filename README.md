@@ -8,6 +8,11 @@ from a Daikin heat pump, by sending serial commands to it, and interpreting the 
 DChecker it does not have a user interface (yet), as it's just a library. However it could be used
 to make such an interface.
 
+As the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
+says, "This software is designed to be used by Daikin service engineers. Use by any other party is prohibited."
+Therefore you use this software (to emulate D-Checker) entirely at your own risk, and you may void your warranty,
+destroy your hardware, cause a fire or emit poisonous gases.
+
 ## Hardware Compatibility
 
 Currently only the following models are actually supported (or believed to be):
@@ -15,21 +20,23 @@ Currently only the following models are actually supported (or believed to be):
 * [Altherma LT CB EHBH 04/08 CB](https://www.daikin.co.uk/en_gb/products/EHBH-CB.html).
 
 Other models listed above could be added, if they are compatible with D-Checker, and you
-can obtain a copy, and the necessary hardware, and:
+can obtain a copy, and the necessary hardware.
 
-* Run the D-Checker software to communicate with it;
-* Capture a trace of this serial communication;
-* Use D-Checker to Record some activity of the unit;
-* Export it to CSV;
-* Compare the changes in recorded values (e.g. temperatures) with changes in the messages (e.g.
-  a byte in the response to a particular command changes value since the last response);
-* Implement a decoder entry to extract this value from the response, with a test.
-* Ideally, provide autodetect data (the comms when choosing Auto Detect in D-Checker) to help
-  identify the unit automatically, and/or confirm the correct unit choice.
+As the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
+says:
 
-You can't just download the D-Checker software (anywhere that I can find; please let me know if you
-do) but you may be able to obtain a copy by contacting technicalhelp@daikin.co.uk and asking for the
-latest version.
+According to the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
+it supports (and therefore this software could one day support):
+
+* SkyAir Models manufactured in 2003 and later. (Exceptions may apply; some models do not support
+  D-checker protocol. VRVII MA (M9) series are not supported.)
+* RA Models manufactured in 2002 and later.
+* VRV Models manufactured in 2003 and later. (Maximum supported number of VRV indoor unit data is 59.)
+* Altherma LT:BB,CA indoor unit models (2010 and later).
+
+And not chillers, Altherma HT or Altherma Flex.
+
+### Serial interface
 
 You will need the serial interface hardware, such as:
 
@@ -44,6 +51,24 @@ You will need the serial interface hardware, such as:
   postage. Technically it's Bluetooth and not serial, but since it connects to the device the same
   way (by serial cable), I think it probably supports the same protocol in some manner over
   Bluetooth (to be confirmed).
+
+### Adding support for new models
+
+Other models listed above could be added, if you:
+
+* Run the D-Checker software to communicate with it;
+* Capture a trace of this serial communication;
+* Use D-Checker to Record some activity of the unit;
+* Export it to CSV;
+* Compare the changes in recorded values (e.g. temperatures) with changes in the messages (e.g.
+  a byte in the response to a particular command changes value since the last response);
+* Implement a decoder entry to extract this value from the response, with a test.
+* Ideally, provide autodetect data (the comms when choosing Auto Detect in D-Checker) to help
+  identify the unit automatically, and/or confirm the correct unit choice.
+
+You can't just download the D-Checker software (anywhere that I can find; please let me know if you
+do) but you may be able to obtain a copy by contacting technicalhelp@daikin.co.uk and asking for the
+latest version.
 
 As the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
 says:
@@ -60,30 +85,8 @@ says:
   outdoor units. Monitoring and recording of data from multiple outdoor unit
   circuits is not supported.
 
-According to that manual it supports (and therefore this software could one day support):
-
-* SkyAir Models manufactured in 2003 and later. (Exceptions may apply; some models do not support
-  D-checker protocol. VRVII MA (M9) series are not supported.)
-* RA Models manufactured in 2002 and later.
-* VRV Models manufactured in 2003 and later. (Maximum supported number of VRV indoor unit data is 59.)
-* Altherma LT:BB,CA indoor unit models (2010 and later).
-
-And not chillers, Altherma HT or Altherma Flex.
-
 Although the protocol is probably the same, the definition files are encrypted, so we can't just
 extract the number, meaning and data type of each variable from them. They must be reverse engineered.
-
-Other models listed above could be added, if you:
-
-* Run the D-Checker software to communicate with it;
-* Capture a trace of this serial communication;
-* Use D-Checker to Record some activity of the unit;
-* Export it to CSV;
-* Compare the changes in recorded values (e.g. temperatures) with changes in the messages (e.g.
-  a byte in the response to a particular command changes value since the last response);
-* Implement a decoder entry to extract this value from the response, with a test.
-* Ideally, provide autodetect data (the comms when choosing Auto Detect in D-Checker) to help
-  identify the unit automatically, and/or confirm the correct unit choice.
 
 Serial port traces can be captured using HHD Software's
 [Free Serial Analyzer](https://freeserialanalyzer.com/). The free version has limitations, including
