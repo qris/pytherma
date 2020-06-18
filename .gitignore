@@ -1,0 +1,4 @@
+*.swp
+*.pyc
+.tox
+__pycache__
