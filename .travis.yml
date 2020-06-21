@@ -1,0 +1,8 @@
+# https://docs.travis-ci.com/user/languages/python/#using-tox-as-the-build-script
+language: generic
+before_install:
+  - sudo apt-get -y install python3.7 python3.8
+install:
+  - pip3 install tox
+script:
+  - tox
