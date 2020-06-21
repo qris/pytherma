@@ -1,7 +1,12 @@
 # https://docs.travis-ci.com/user/languages/python/#using-tox-as-the-build-script
 language: generic
 before_install:
-  - sudo apt-get -y install python3.7 python3.8
+  # https://websiteforstudents.com/how-to-install-python-3-8-on-ubuntu-18-04-16-04/
+  - sudo apt update
+  - sudo apt install software-properties-common
+  - sudo add-apt-repository -y ppa:deadsnakes/ppa
+  - sudo apt update
+  - sudo apt -y install python3.7 python3.8
 install:
   - pip3 install tox
 script:
