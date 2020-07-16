@@ -1,11 +1,9 @@
 import argparse
-import os
 import re
 
 from collections import namedtuple
-from functools import partial
 
-from daikin import decoding
+from pytherma import decoding
 
 # example: "000079: 2020-06-02 20:37:15.6557978 +0.0000043"
 header_regex = re.compile(r'^(\d{6}): \d{4}-\d{2}-\d{2} (\d{2}:\d{2}:\d{2}\.\d+)')
@@ -19,7 +17,7 @@ def read_packet(handle, is_read):
     header_line = handle.readline()
     if header_line == '' or header_line == '\x00':
         return None
-    
+
     match = header_regex.match(header_line)
     assert match is not None, f"{header_line!r} at {handle}:{handle.tell():x}"
     packet_no = int(match.group(1))
@@ -56,9 +54,9 @@ def main():
     parser = argparse.ArgumentParser(description='Parse Data View exported from HHD Device Monitoring Studio')
     parser.add_argument('write_file', help='Text file containing bytes WRITTEN to device (out)')
     parser.add_argument('read_file', help='Text file containing bytes READ from device (in)')
-    parser.add_argument('--changes', action='store_true', 
+    parser.add_argument('--changes', action='store_true',
                         help="Show only lines where the response to a command differs from the previous one")
-    parser.add_argument('--decode', action='store_true', 
+    parser.add_argument('--decode', action='store_true',
                         help="Decode changes as Daikin Altherma variables where known")
     args = parser.parse_args()
 
@@ -109,14 +107,14 @@ def main():
                     new_byte = response.data_bytes[i] if i < len(response.data_bytes) else None
                     if new_byte != old_byte:
                         diffs.append((i, old_byte, new_byte))
-                
+
             if args.decode:
                 values = decoding.decode(command.data_bytes, response.data_bytes)
                 for i, (decoder, new_value) in values.items():
                     old_value = (decoder.decode(command.data_bytes, last_response.data_bytes)
                                  if last_response is not None else None)
                     decoded.append(f"# {decoder.number}: {decoder.label}: {old_value} => {new_value}")
-                    
+
         if diffs:
             print("")
 
