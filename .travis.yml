@@ -1,12 +1,37 @@
 # https://docs.travis-ci.com/user/languages/python/#using-tox-as-the-build-script
 language: generic
 before_install:
+  # https://fabianlee.org/2018/02/11/ubuntu-a-centralized-apt-package-cache-using-apt-cacher-ng/
+  - sudo apt-get install apt-cacher-ng
+  - 'echo "PassThroughPattern: .*" | sudo tee -a /etc/apt-cacher-ng/acng.conf'
+  - 'echo "VerboseLog: 2" | sudo tee -a /etc/apt-cacher-ng/acng.conf'
+  - 'echo "Debug: 3" | sudo tee -a /etc/apt-cacher-ng/acng.conf'
+  - 'sudo sed -i -e "/^CacheDir: .*/d" /etc/apt-cacher-ng/*.conf'
+  - 'echo "CacheDir: ${HOME}/acng.cache" | sudo tee -a /etc/apt-cacher-ng/acng.conf'
+  - 'sudo grep -r CacheDir /etc/apt-cacher-ng'
+  - 'echo "Acquire::http::Proxy \"http://localhost:3142\";" | sudo tee /etc/apt/apt.conf.d/00proxy'
+  - mkdir -p ~/acng.cache
+  - chmod 755 ~
+  - chmod 777 ~/acng.cache
+  - chmod -R a+rwX ~/acng.cache
+  - 'sudo ls -ld ~ ~/acng.cache'
+  - 'sudo systemctl restart apt-cacher-ng || (sudo journalctl -xe; false;)'
+
   # https://websiteforstudents.com/how-to-install-python-3-8-on-ubuntu-18-04-16-04/
   - sudo apt update
   - sudo apt install software-properties-common
   - sudo add-apt-repository -y ppa:deadsnakes/ppa
   - sudo apt update
   - sudo apt -y install python3.6 python3.7 python3.8 python3.8-distutils python3-pip
+  - # sudo cat /var/log/apt-cacher-ng/apt-cacher.*
   - pip3 install tox
+
 script:
   - tox
+  - # ls -la ~/.cache/pip ~/acng.cache
+
+cache:
+  directories:
+  - $HOME/acng.cache
+  # https://pip.pypa.io/en/stable/reference/pip_install/#caching
+  - $HOME/.cache/pip
