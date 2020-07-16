@@ -1,5 +1,7 @@
 # pyTherma
 
+[![Travis build status](https://travis-ci.org/qris/pytherma.svg?branch=master&status=created)](https://travis-ci.org/github/qris/pytherma)
+
 A Python library and tools for communicating with a Daikin Altherma ASHP (e.g. model EHBH08CB3V)
 using serial commands.
 
