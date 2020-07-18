@@ -1,3 +1,5 @@
+""" Simulates a Daikin Altherma's responses to serial commands. Used by tests. """
+
 import random
 
 autodetect_command_responses = [
@@ -77,9 +79,17 @@ autodetect_command_responses = [
 
 
 class DaikinSimulator:
+    """ Simulates a Daikin Altherma's responses to serial commands. Used by tests. """
+
     response_buffer = b''
 
     def write(self, command):
+        """ Write a simulated command.
+
+        This places an appropriate response into the response buffer, which must be empty (the
+        last response must have been completely read). The read() method then returns the bytes
+        of the response.
+        """
         assert self.response_buffer == b'', f"Data left in response buffer: {self.response_buffer}"
         responses = [canned_response for canned_command, canned_response in autodetect_command_responses if canned_command == command]
         assert len(responses) > 0, f"Unknown command: {command}"
@@ -87,10 +97,14 @@ class DaikinSimulator:
         self.response_buffer = response
 
     def read(self, length=1):
+        """ Read some bytes from the start of the response buffer, and removes them.
+
+        You may not try to read more bytes than are in the buffer. This forces you to read the
+        correct number of bytes to determine the length of the response, and then read it
+        exactly. Reading too much would block forever in the real world.
+        """
         assert length <= len(self.response_buffer), f"Read too large: {len(self.response_buffer)} bytes available"
         result = self.response_buffer[:length]
         remain = self.response_buffer[length:]
         self.response_buffer = remain
         return result
-
-

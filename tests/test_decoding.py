@@ -1,3 +1,8 @@
+""" Tests for the functions in the decoding module.
+
+Those functions decode response packets into Altherma attribute values.
+"""
+
 import unittest
 
 from collections import defaultdict
@@ -83,7 +88,9 @@ class DecodingTest(unittest.TestCase):
                                       f"byte {tested_byte}")
 
                     tested_bit = one(tested_bits)
-                    overlapping_decoder = bit_tested_bytes_to_bit_to_decoders[tested_byte].get(tested_bit)
+                    overlapping_decoder = (
+                        bit_tested_bytes_to_bit_to_decoders[tested_byte].get(tested_bit)
+                    )
                     self.assertIsNone(overlapping_decoder,
                                       f"{decoder} overlaps on {command} byte {tested_byte} "
                                       f"bit {tested_bit}")
@@ -91,7 +98,8 @@ class DecodingTest(unittest.TestCase):
                     bit_tested_bytes_to_bit_to_decoders[tested_byte][tested_bit] = decoder
                 else:
                     overlapping_decoders = {
-                        other_decoder for position, other_decoder in bit_tested_bytes_to_bit_to_decoders.items()
+                        other_decoder
+                        for position, other_decoder in bit_tested_bytes_to_bit_to_decoders.items()
                         if (position <  decoder.end_position and
                             position >= decoder.start_position)
                     }
@@ -100,7 +108,8 @@ class DecodingTest(unittest.TestCase):
                                      f"bytes {decoder.start_position}-{decoder.end_position - 1}")
 
                     overlapping_decoders = {
-                        other_decoder for position, other_decoder in non_bit_tested_byte_to_decoder.items()
+                        other_decoder
+                        for position, other_decoder in non_bit_tested_byte_to_decoder.items()
                         if (position <  decoder.end_position and
                             position >= decoder.start_position)
                     }
