@@ -27,3 +27,7 @@ class PacketFunctionsTest(unittest.TestCase):
         sim = simulator.DaikinSimulator()
         self.assertEqual(bytes([21, 234]), comms.execute_command(sim, bytes([3, 64, 160, 28])))
         self.assertEqual(bytes([21, 234]), comms.execute_command(sim, b'$$$'))
+        # 4344,4355 22:46:25.1320431
+        # [[3, 64, 17, 171], [64, 17, 8, 2, 49, 149, 1, 2, 5, 214]]
+        self.assertEqual(bytes([64, 17, 8, 2, 49, 149, 1, 2, 5, 214]),
+                         comms.execute_command(sim, bytes([3, 64, 17, 171])))
