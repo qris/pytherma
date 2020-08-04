@@ -120,10 +120,6 @@ prefix_to_decoders = {
         CommandDecoder(14, decode_byte_1, 20, "O/U MPU ID (yy)"),
         CommandDecoder(15, decode_byte_10, 21, "O/U capacity (kW)"),
     ],
-    (3, 64, 33): [
-        # 1252,1263 22:46:00.2408396 [(7, 61, 39)] (61 => 39)
-        CommandDecoder(7, decode_byte_1, 65, "Voltage (N-phase) (V)"),
-    ],
     (3, 64, 16): [
         # 2020/06/01 22:49:35: 22:Operation Mode: Fan Only => Heating.
         # 2020/06/01 22:51:35: 22:Operation Mode: Heating => Fan Only.
@@ -131,6 +127,72 @@ prefix_to_decoders = {
         # 27304,27315 22:49:35.0694571 [(3, 0, 1)]
         # 41294,41305 22:51:30.0844895 [(3, 1, 0)]
         CommandDecoder(3, decode_bits[0], 22, "Operation Mode (Heating)"),
+    ],
+    (3, 64, 17): [
+        # 2020/06/01 22:51:45:
+        # 47:O/U EEPROM (1st digit): 2 => 0
+        # 48:O/U EEPROM (3rd 4th digit): 31 => 0
+        # 49:O/U EEPROM (5th 6th digit): 95 => 0
+        # 50:O/U EEPROM (7th 8th digit): 1 => 0
+        # 51:O/U EEPROM (10th digit): 2 => 0
+        # 52:O/U EEPROM (11th digit): E => ''
+        # Assumed to be BCD encoded in (seems likely):
+        # 43166,43177 22:51:45.1314069 [(3, 2, 0), (4, 49, 0), (5, 149, 0), (6, 1, 0), (7, 2, 0), (8, 5, 0)]
+        # [[3, 64, 17, 171], [64, 17, 8, 0, 0, 0, 0, 0, 0, 166]]
+        # 47418,47429 22:52:20.1469529 [(3, 0, 2), (4, 0, 49), (5, 0, 149), (6, 0, 1), (7, 0, 2), (8, 0, 5)]
+        # [[3, 64, 17, 171], [64, 17, 8, 2, 49, 149, 1, 2, 5, 214]]
+        # I'm guessing that O/U means Outdoor Unit.
+        CommandDecoder(3, decode_byte_1, 47, "O/U EEPROM (1st digit)"),
+        CommandDecoder(4, decode_byte_1, 48, "O/U EEPROM (3rd 4th digit)"),
+        CommandDecoder(5, decode_byte_1, 49, "O/U EEPROM (5th 6th digit)"),
+        CommandDecoder(6, decode_byte_1, 50, "O/U EEPROM (7th 8th digit)"),
+        CommandDecoder(7, decode_byte_1, 51, "O/U EEPROM (10th digit)"),
+        CommandDecoder(8, decode_byte_1, 52, "O/U EEPROM (11th digit)"),
+    ],
+    (3, 64, 32): [
+        # 2020/06/01 22:51:45: 33:Target Evap. Temp.(C): 32.6 => 0
+        # 2020/06/01 22:52:15: 33:Target Evap. Temp.(C): 0 => 32.6
+        # Assuming these:
+        # 43204,43215 22:51:45.1785851 [(7, 74, 0), (8, 1, 0)]
+        # 46240,46251 22:52:10.1786246 [(7, 0, 69), (8, 0, 1)]
+        # TODO: double check this one. The numbers before and after the zero period, according
+        # to the CSV export (32.6'C), are slightly different to the results from this decoder
+        # (33.0'C and 32.5'C respectively).
+        # CommandDecoder(7, decode_word_10, 56, "Target Evap. Temp.(C)"),
+        # Actually, this appears to be incorrect, since the observed values match variable 56
+        # exactly, so we still haven't found variable 33.
+        # 2020/06/01 22:51:35: 54:Outdoor air temp.(R1T)(C): 16.5 => 16.0
+        # Assumed to be:
+        # 41992,42003 22:51:35.1785402 [(3, 165, 160), (20, 202, 207)]
+        # [[3, 64, 32, 156], [64, 32, 19, 160, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0, 200, 0, 115, 0, 1, 207]]
+        CommandDecoder(3, decode_word_10, 54, "Outdoor air temp.(R1T)(C)"),
+        CommandDecoder(7, decode_word_10, 56, "Discharge pipe temp.(C)"),
+        # 2020/06/01 22:51:05: 61:Pressure(kgcm2): 11.5 => 11.7
+        # Assumed to be:
+        # 37764,37775 22:51:00.1786083 [(11, 155, 150), (17, 115, 117), (20, 197, 200)]
+        # [[3, 64, 32, 156], [64, 32, 19, 165, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0, 200, 0, 117, 0, 1, 200]]
+        CommandDecoder(11, decode_word_10, 58, "Heat exchanger mid-temp.(C)"),
+        CommandDecoder(17, decode_word_10, 61, "Pressure(kgcm2)"),
+    ],
+    (3, 64, 33): [
+        # 1252,1263 22:46:00.2408396 [(7, 61, 39)] (61 => 39)
+        CommandDecoder(7, decode_byte_1, 65, "Voltage (N-phase) (V)"),
+        # 2020/06/01 22:48:35: 58:Heat exchanger mid-temp.(C): 16 => 15.5'C
+        # 2020/06/01 22:51:05: 58:Heat exchanger mid-temp.(C): 15.5 => 15'C
+        # Assumed to be (seems very likely):
+        # 21402,21413 22:48:45.2095790 [(10, 160, 155), (19, 193, 198)]
+        # [[3, 64, 33, 155], [64, 33, 18, 5, 0, 0, 0, 38, 0, 0, 155, 0, 0, 0, 0, 0, 0, 0, 0, 198]]
+        # 37832,37843 22:51:00.2409211 [(10, 155, 150), (19, 244, 249)]
+        # [[3, 64, 33, 155], [64, 33, 18, 5, 0, 0, 0, 248, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 249]]
+        # This value also appears to be in response 32 word at 11. There's currently no way to
+        # distinguish between them, and we don't allow duplicates, so I'm commenting out this one.
+        # CommandDecoder(10, decode_word_10, 58, "Heat exchanger mid-temp.(C)"),
+
+        # 2020/06/01 22:51:45: 63:INV primary current (A): 0.5 => 0
+        # Assumed to be:
+        # 43272,43283 22:51:45.2409813 [(3, 5, 0), (7, 243, 0), (10, 150, 0), (19, 254, 140)]
+        # [[3, 64, 33, 155], [64, 33, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 140]]
+        CommandDecoder(3, decode_word_10, 63, "INV primary current (A)"),
     ],
     (3, 64, 48): [
         # 2020/06/01 22:51:45: 153:Reheat ON/OFF ON => OFF. Assuming this one (byte 10 bit 7):

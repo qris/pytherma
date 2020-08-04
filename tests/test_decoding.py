@@ -44,17 +44,110 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(True, values[22][1], "Wrong decode for 22:Operation Mode (Heating)")
 
         # 41294,41305 22:51:30.0844895 [(3, 1, 0), (19, 86, 87)]
-        [[3, 64, 16, 172], [64, 16, 18, 0, 0, 0, 0, 0, 0, 67, 3, 0, 0, 0, 0, 0, 0, 0, 0, 87]]
+        # [[3, 64, 16, 172], [64, 16, 18, 0, 0, 0, 0, 0, 0, 67, 3, 0, 0, 0, 0, 0, 0, 0, 0, 87]]
         values = decoding.decode(bytes([3, 64, 16, 172]),
                                  bytes([64, 16, 18, 0, 0, 0, 0, 0, 0, 67, 3, 0, 0, 0, 0, 0,
                                         0, 0, 0, 87]))
         self.assertEqual(False, values[22][1], "Wrong decode for 22:Operation Mode (Heating)")
+
+        # 2020/06/01 22:51:45:
+        # 47:O/U EEPROM (1st digit): 2 => 0
+        # 48:O/U EEPROM (3rd 4th digit): 31 => 0
+        # 49:O/U EEPROM (5th 6th digit): 95 => 0
+        # 50:O/U EEPROM (7th 8th digit): 1 => 0
+        # 51:O/U EEPROM (10th digit): 2 => 0
+        # 52:O/U EEPROM (11th digit): E => ''
+        # Assumed to be BCD encoded in (seems likely):
+        # 43166,43177 22:51:45.1314069 [(3, 2, 0), (4, 49, 0), (5, 149, 0), (6, 1, 0), (7, 2, 0), (8, 5, 0)]
+        # [[3, 64, 17, 171], [64, 17, 8, 0, 0, 0, 0, 0, 0, 166]]
+        # 47418,47429 22:52:20.1469529 [(3, 0, 2), (4, 0, 49), (5, 0, 149), (6, 0, 1), (7, 0, 2), (8, 0, 5)]
+        # [[3, 64, 17, 171], [64, 17, 8, 2, 49, 149, 1, 2, 5, 214]]
+        # I'm guessing that O/U means Outdoor Unit.
+        values = decoding.decode(bytes([3, 64, 17, 171]),
+                                 bytes([64, 17, 8, 0, 0, 0, 0, 0, 0, 166]))
+        self.assertEqual(0, values[47][1], "Wrong decode for 47:O/U EEPROM (1st digit)")
+        self.assertEqual(0, values[48][1], "Wrong decode for 48:O/U EEPROM (3rd 4th digit)")
+        self.assertEqual(0, values[49][1], "Wrong decode for 49:O/U EEPROM (5th 6th digit)")
+        self.assertEqual(0, values[50][1], "Wrong decode for 50:O/U EEPROM (7th 8th digit)")
+        self.assertEqual(0, values[51][1], "Wrong decode for 51:O/U EEPROM (10th digit)")
+        self.assertEqual(0, values[52][1], "Wrong decode for 52:O/U EEPROM (11th digit)")
+        values = decoding.decode(bytes([3, 64, 17, 171]),
+                                 bytes([64, 17, 8, 2, 49, 149, 1, 2, 5, 214]))
+        self.assertEqual(0x2, values[47][1], "Wrong decode for 47:O/U EEPROM (1st digit)")
+        self.assertEqual(0x31, values[48][1], "Wrong decode for 48:O/U EEPROM (3rd 4th digit)")
+        self.assertEqual(0x95, values[49][1], "Wrong decode for 49:O/U EEPROM (5th 6th digit)")
+        self.assertEqual(0x1, values[50][1], "Wrong decode for 50:O/U EEPROM (7th 8th digit)")
+        self.assertEqual(0x2, values[51][1], "Wrong decode for 51:O/U EEPROM (10th digit)")
+        self.assertEqual(0x5, values[52][1], "Wrong decode for 52:O/U EEPROM (11th digit)")
+
+        # 2020/06/01 22:51:45: 33:Target Evap. Temp.(C): 32.6 => 0
+        # 2020/06/01 22:52:15: 33:Target Evap. Temp.(C): 0 => 32.6
+        # Assuming these:
+        # 43204,43215 22:51:45.1785851 [(7, 74, 0), (8, 1, 0)]
+        # [[3, 64, 32, 156], [64, 32, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 139]]
+        # 46240,46251 22:52:10.1786246 [(7, 0, 69), (8, 0, 1)]
+        # [[3, 64, 32, 156], [64, 32, 19, 165, 0, 0, 0, 69, 1, 0, 0, 150, 0, 0, 0, 215, 0, 115, 0, 1, 192]]
+        values = decoding.decode(bytes([3, 64, 32, 156]),
+                                 bytes([64, 32, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        0, 0, 1, 139]))
+        self.assertEqual(0, values[56][1], "Wrong decode for 56:Discharge pipe temp.(C)")
+        values = decoding.decode(bytes([3, 64, 32, 156]),
+                                 bytes([64, 32, 19, 165, 0, 0, 0, 69, 1, 0, 0, 150, 0, 0, 0,
+                                        215, 0, 115, 0, 1, 192]))
+        self.assertEqual(32.5, values[56][1], "Wrong decode for 56:Discharge pipe temp.(C)")
+        self.assertEqual(16.5, values[54][1], "Wrong decode for 54:Outdoor air temp.(R1T)(C)")
+        # 2020/06/01 22:51:35: 54:Outdoor air temp.(R1T)(C): 16.5 => 16.0
+        # Assumed to be:
+        # 41992,42003 22:51:35.1785402 [(3, 165, 160), (20, 202, 207)]
+        # [[3, 64, 32, 156], [64, 32, 19, 160, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0, 200, 0, 115, 0, 1, 207]]
+        values = decoding.decode(bytes([3, 64, 32, 156]),
+                                 bytes([64, 32, 19, 160, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0,
+                                        200, 0, 115, 0, 1, 207]))
+        self.assertEqual(16.0, values[54][1], "Wrong decode for 54:Outdoor air temp.(R1T)(C)")
+        self.assertEqual(11.5, values[61][1], "Wrong decode for 61:Pressure(kgcm2)")
+
+        # 2020/06/01 22:51:05: 61:Pressure(kgcm2): 11.5 => 11.7
+        # Assumed to be:
+        # 37764,37775 22:51:00.1786083 [(11, 155, 150), (17, 115, 117), (20, 197, 200)]
+        # [[3, 64, 32, 156], [64, 32, 19, 165, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0, 200, 0, 117, 0, 1, 200]]
+        values = decoding.decode(bytes([3, 64, 32, 156]),
+                                 bytes([64, 32, 19, 165, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0,
+                                        200, 0, 117, 0, 1, 200]))
+        self.assertEqual(16.5, values[54][1], "Wrong decode for 54:Outdoor air temp.(R1T)(C)")
+        self.assertEqual(15.0, values[58][1], "Wrong decode for 58:Heat exchanger mid-temp.(C)")
+        self.assertEqual(11.7, values[61][1], "Wrong decode for 61:Pressure(kgcm2)")
 
         # 1252,1263 22:46:00.2408396 [(7, 61, 39)] (61 => 39)
         values = decoding.decode(bytes([3, 64, 33, 155]),
                                  bytes([64, 33, 18, 5, 0, 0, 0, 39, 0, 0, 160, 0, 0, 0, 0, 0, 0,
                                         0, 0, 192]))
         self.assertEqual(39, values[65][1], "Wrong decode for 65:Voltage (N-phase) (V)")
+
+        # 2020/06/01 22:48:35: 58:Heat exchanger mid-temp.(C): 16 => 15.5'C
+        # 2020/06/01 22:51:05: 58:Heat exchanger mid-temp.(C): 15.5 => 15'C
+        # Assumed to be (seems very likely):
+        # 21402,21413 22:48:45.2095790 [(10, 160, 155), (19, 193, 198)]
+        # [[3, 64, 33, 155], [64, 33, 18, 5, 0, 0, 0, 38, 0, 0, 155, 0, 0, 0, 0, 0, 0, 0, 0, 198]]
+        values = decoding.decode(bytes([3, 64, 33, 155]),
+                                 bytes([64, 33, 18, 5, 0, 0, 0, 38, 0, 0, 155, 0, 0, 0, 0, 0,
+                                        0, 0, 0, 198]))
+        # self.assertEqual(15.5, values[58][1], "Wrong decode for 58:Heat exchanger mid-temp.(C)")
+        # 37832,37843 22:51:00.2409211 [(10, 155, 150), (19, 244, 249)]
+        # [[3, 64, 33, 155], [64, 33, 18, 5, 0, 0, 0, 248, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 249]]
+        values = decoding.decode(bytes([3, 64, 33, 155]),
+                                 bytes([64, 33, 18, 5, 0, 0, 0, 248, 0, 0, 150, 0, 0, 0, 0, 0,
+                                        0, 0, 0, 249]))
+        # self.assertEqual(15.0, values[58][1], "Wrong decode for 58:Heat exchanger mid-temp.(C)")
+
+        # 2020/06/01 22:51:45: 63:INV primary current (A): 0.5 => 0
+        # Assumed to be:
+        # 43272,43283 22:51:45.2409813 [(3, 5, 0), (7, 243, 0), (10, 150, 0), (19, 254, 140)]
+        # [[3, 64, 33, 155], [64, 33, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 140]]
+        self.assertEqual(0.5, values[63][1], "Wrong decode for 63:INV primary current (A)")
+        values = decoding.decode(bytes([3, 64, 33, 155]),
+                                 bytes([64, 33, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                        0, 0, 0, 140]))
+        self.assertEqual(0.0, values[63][1], "Wrong decode for 63:INV primary current (A)")
 
         # 42720,42731 22:51:40.2882745 [(10, 128, 0), (14, 63, 191)]
         # [[3, 64, 48, 140], [64, 48, 13, 0, 0, 0, 194, 1, 0, 0, 0, 0, 0, 0, 191]]
@@ -149,7 +242,7 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(100, values[181][1],
                          "Wrong decode for 181:Water pump signal (0:max-100:stop)")
 
-    def test_overlap(self):
+    def test_no_overlap(self):
         """ Tests that decoders do not overlap.
 
         If a byte of the response is processed by a bit decoder, then it can only be processed
@@ -217,3 +310,22 @@ class DecodingTest(unittest.TestCase):
 
                     for i in range(decoder.start_position, decoder.end_position):
                         non_bit_tested_byte_to_decoder[i] = decoder
+
+    def test_unique(self):
+        """ Tests that each variable is only set by a single decoder.
+
+        No two decoders should set the same variable, since the results are unpredictable, and
+        this probably indicates a copy-and-paste error.
+        """
+        variable_number_to_decoders = defaultdict(list)
+
+        for prefix, decoders in decoding.prefix_to_decoders.items():
+            for decoder in decoders:
+                variable_number_to_decoders[decoder.number].append((prefix, decoder))
+
+        for variable_number, decoders in list(variable_number_to_decoders.items()):
+            if len(decoders) == 1:
+                del variable_number_to_decoders[variable_number]
+
+        self.assertEqual({}, dict(variable_number_to_decoders),
+                         "These variables are set by more than one decoder")
