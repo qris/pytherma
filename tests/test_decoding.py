@@ -231,6 +231,9 @@ class DecodingTest(unittest.TestCase):
                          "Wrong decode for 161:LW setpoint (add)(C)")
         self.assertEqual(21.0, values[162][1],
                          "Wrong decode for 162:RT setpoint(C)")
+        self.assertEqual(False, values[166][1],
+                         "Wrong decode for 166:Main RT Heating")
+
         # 2020/06/01 22:51:45: 153:Reheat ON/OFF: 1 => 0
         # 2020/06/01 22:52:35: 153:Reheat ON/OFF: 0 => 0
         # Assumed to be:
@@ -242,10 +245,17 @@ class DecodingTest(unittest.TestCase):
                                  bytes([64, 98, 19, 128, 0, 0, 131, 1, 210, 0, 0, 0, 253, 255, 0, 100, 0, 0, 0, 0, 20]))
         self.assertEqual(False, values[153][1],
                          "Wrong decode for 153:Reheat ON/OFF")
+        self.assertEqual(False, values[156][1],
+                         "Wrong decode for 156:Powerful DHW Operation. ON/OFF")
+        self.assertEqual(38.7, values[161][1],
+                         "Wrong decode for 161:LW setpoint (add)(C)")
+
         values = decoding.decode(bytes([3, 64, 98, 90]),
                                  bytes([64, 98, 19, 128, 0, 128, 94, 1, 210, 0, 0, 1, 253, 255, 0, 100, 0, 0, 0, 0, 184]))
         self.assertEqual(True, values[153][1],
                          "Wrong decode for 153:Reheat ON/OFF")
+        self.assertEqual(False, values[156][1],
+                         "Wrong decode for 156:Powerful DHW Operation. ON/OFF")
 
         # 25864,25875 22:49:20.4284707 [(10, 0, 16)] (bit 4 OFF => ON)
         # 25864,25875 22:49:20.4284707 [(15, 100, 94)] (100 => 94)
@@ -261,6 +271,10 @@ class DecodingTest(unittest.TestCase):
         values = decoding.decode(bytes([3, 64, 98, 90]),
                                  bytes([64, 98, 19, 128, 0, 144, 94, 1, 210, 0, 16, 1, 118, 0,
                                         0, 24, 0, 0, 0, 0, 106]))
+        self.assertEqual(True, values[156][1],
+                         "Wrong decode for 156:Powerful DHW Operation. ON/OFF")
+        self.assertEqual(True, values[166][1],
+                         "Wrong decode for 166:Main RT Heating")
         self.assertEqual(11.8, values[179][1],
                          "Wrong decode for 179:Flow sensor (l/min)")
 
@@ -274,6 +288,28 @@ class DecodingTest(unittest.TestCase):
                          "Wrong decode for 179:Flow sensor (l/min)")
         self.assertEqual(100, values[181][1],
                          "Wrong decode for 181:Water pump signal (0:max-100:stop)")
+
+    def test_decode_page_99(self):
+        """ Tests that the contents of page 99 are decoded correctly, using raw captured packets. """
+        # 798,809 22:45:29.6316392
+        # Assumed to be 194:Indoor Unit Address and 195-200:I/U EEPROM (BCD digits)
+        # [[3, 64, 99, 89], [64, 99, 10, 128, 0, 1, 112, 100, 50, 21, 1, 181]]
+        values = decoding.decode(bytes([3, 64, 99, 89]),
+                                 bytes([64, 99, 10, 128, 0, 1, 112, 100, 50, 21, 1, 181]))
+        self.assertEqual(0, values[194][1],
+                         "Wrong decode for 194:Indoor Unit Address")
+        self.assertEqual(1, values[195][1],
+                         "Wrong decode for 195:I/U EEPROM (3rd digit)"),
+        self.assertEqual(0x70, values[196][1],
+                         "Wrong decode for 196:I/U EEPROM (4th 5th digit)"),
+        self.assertEqual(0x64, values[197][1],
+                         "Wrong decode for 197:I/U EEPROM (6th 7th digit)"),
+        self.assertEqual(0x32, values[198][1],
+                         "Wrong decode for 198:I/U EEPROM (8th 9th digit)"),
+        self.assertEqual(0x15, values[199][1],
+                         "Wrong decode for 199:I/U EEPROM (11th digit)"),
+        self.assertEqual(1, values[200][1],
+                         "Wrong decode for 200:I/U EEPROM (12th digit)(rev.)"),
 
     def test_no_overlap(self):
         """ Tests that decoders do not overlap.

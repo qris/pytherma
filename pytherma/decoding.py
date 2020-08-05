@@ -264,6 +264,19 @@ prefix_to_decoders = {
         # 25864,25875 22:49:20.4284707 [(15, 100, 94)] (100 => 94)
         CommandDecoder(15, decode_byte_1, 181, "Water pump signal (0:max-100:stop)"),
     ],
+
+    (3, 64, 99): [
+        # 798,809 22:45:29.6316392
+        # Assumed to be 194:Indoor Unit Address and 195-200:I/U EEPROM (BCD digits)
+        # [[3, 64, 99, 89], [64, 99, 10, 128, 0, 1, 112, 100, 50, 21, 1, 181]]
+        CommandDecoder(4, decode_byte_1, 194, "Indoor Unit Address"),
+        CommandDecoder(5, decode_byte_1, 195, "I/U EEPROM (3rd digit)"),
+        CommandDecoder(6, decode_byte_1, 196, "I/U EEPROM (4th 5th digit)"),
+        CommandDecoder(7, decode_byte_1, 197, "I/U EEPROM (6th 7th digit)"),
+        CommandDecoder(8, decode_byte_1, 198, "I/U EEPROM (8th 9th digit)"),
+        CommandDecoder(9, decode_byte_1, 199, "I/U EEPROM (11th digit)"),
+        CommandDecoder(10, decode_byte_1, 200, "I/U EEPROM (12th digit)(rev.)"),
+    ],
 }
 
 
