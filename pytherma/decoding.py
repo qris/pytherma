@@ -86,6 +86,9 @@ def decode_word(divisor, data_bytes):
         return None
 
 
+decode_word_1 = partial(decode_word, 1)
+decode_word_1.decode_len = 2
+
 decode_word_10 = partial(decode_word, 10)
 decode_word_10.decode_len = 2
 
@@ -175,6 +178,12 @@ prefix_to_decoders = {
         CommandDecoder(17, decode_word_10, 61, "Pressure(kgcm2)"),
     ],
     (3, 64, 33): [
+        # 2020/06/01 22:51:45: 63:INV primary current (A): 0.5 => 0
+        # Assumed to be:
+        # 43272,43283 22:51:45.2409813 [(3, 5, 0), (7, 243, 0), (10, 150, 0), (19, 254, 140)]
+        # [[3, 64, 33, 155], [64, 33, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 140]]
+        CommandDecoder(3, decode_word_10, 63, "INV primary current (A)"),
+
         # 1252,1263 22:46:00.2408396 [(7, 61, 39)] (61 => 39)
         CommandDecoder(7, decode_byte_1, 65, "Voltage (N-phase) (V)"),
         # 2020/06/01 22:48:35: 58:Heat exchanger mid-temp.(C): 16 => 15.5'C
@@ -187,17 +196,22 @@ prefix_to_decoders = {
         # This value also appears to be in response 32 word at 11. There's currently no way to
         # distinguish between them, and we don't allow duplicates, so I'm commenting out this one.
         # CommandDecoder(10, decode_word_10, 58, "Heat exchanger mid-temp.(C)"),
-
-        # 2020/06/01 22:51:45: 63:INV primary current (A): 0.5 => 0
-        # Assumed to be:
-        # 43272,43283 22:51:45.2409813 [(3, 5, 0), (7, 243, 0), (10, 150, 0), (19, 254, 140)]
-        # [[3, 64, 33, 155], [64, 33, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 140]]
-        CommandDecoder(3, decode_word_10, 63, "INV primary current (A)"),
     ],
     (3, 64, 48): [
-        # 2020/06/01 22:51:45: 153:Reheat ON/OFF ON => OFF. Assuming this one (byte 10 bit 7):
-        # 42720,42731 22:51:40.2882745 [(10, 128, 0)]
-        CommandDecoder(10, decode_bits[7], 153, "Reheat ON/OFF"),
+        # 2020/06/01 22:51:45: 89:Expansion valve (pls): 450 => 0
+        # Assumed to be:
+        # 43330,43341 22:51:45.2880632 [(6, 194, 0), (7, 1, 0), (14, 191, 130)]
+        # [[3, 64, 48, 140], [64, 48, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 130]]
+        CommandDecoder(6, decode_word_1, 89, "Expansion valve (pls)"),
+
+        # 2020/06/01 22:49:45: 94:4 Way Valve 1: 0 => 1
+        # 2020/06/01 22:51:45: 94:4 Way Valve 1: 1 => 0
+        # Assumed to be:
+        # 28136,28147 22:49:40.2879867 [(10, 0, 128), (14, 191, 63)]
+        # [[3, 64, 48, 140], [64, 48, 13, 0, 0, 0, 194, 1, 0, 0, 128, 0, 0, 0, 63]]
+        # 42720,42731 22:51:40.2882745 [(10, 128, 0), (14, 63, 191)]
+        # [[3, 64, 48, 140], [64, 48, 13, 0, 0, 0, 194, 1, 0, 0, 0, 0, 0, 0, 191]]
+        CommandDecoder(10, decode_bits[7], 94, "4 Way Valve 1"),
     ],
     (3, 64, 96): [
         CommandDecoder(15, decode_bits[5], 132, "BSH"),  # Booster heater ON/OFF?
@@ -219,19 +233,34 @@ prefix_to_decoders = {
     (3, 64, 98): [
         # 5882,5893 22:46:35.4596000 [(5, 128, 144)] (bit 4 OFF => ON)
         CommandDecoder(5, decode_bits[4], 156, "Powerful DHW Operation. ON/OFF"),
+
+        # 2020/06/01 22:51:45: 153:Reheat ON/OFF: 1 => 0
+        # 2020/06/01 22:52:35: 153:Reheat ON/OFF: 0 => 0
+        # Assumed to be:
+        # 43514,43525 22:51:45.4443617 [(5, 144, 0)]
+        # [[3, 64, 98, 90], [64, 98, 19, 128, 0, 0, 131, 1, 210, 0, 0, 0, 253, 255, 0, 100, 0, 0, 0, 0, 20]]
+        # 49574,49585 22:52:35.4444182 [(5, 0, 128)]
+        # [3, 64, 98, 90], [64, 98, 19, 128, 0, 128, 94, 1, 210, 0, 0, 1, 253, 255, 0, 100, 0, 0, 0, 0, 184]]
+        CommandDecoder(5, decode_bits[7], 153, "Reheat ON/OFF"),
+
         # 2020/06/01 22:51:45: 161:LW setpoint (add)(C): 35 => 36.7 ([1, 94] => [1, 131])
         # 43514,43525 22:51:45.4443617 [(6, 94, 131)]
         CommandDecoder(6, decode_word_10, 161, "LW setpoint (add)(C)"),
+
         # 162:RT setpoint(C): 21 (210): assumed:
         CommandDecoder(8, decode_word_10, 162, "RT setpoint(C)"),
+
         # 25864,25875 22:49:20.4284707 [(10, 0, 16)] (bit 4 OFF => ON)
         # (assumed, could also be # 26346,26357 22:49:25.3190391 [(15, 0, 2)])
         CommandDecoder(10, decode_bits[4], 166, "Main RT Heating"),
+
         # 43514,43525 22:51:45.4443617 [(11, 1, 0)]
         # 44124,44135 22:51:50.4442968 [(11, 0, 1)]
         CommandDecoder(11, decode_bits[0], 178, "Space H Operation output"),
+
         # 27710,27721 22:49:35.4283079 [(12, 72, 118)]
         CommandDecoder(12, decode_word_10, 179, "Flow sensor (l/min)"),
+
         # 25864,25875 22:49:20.4284707 [(15, 100, 94)] (100 => 94)
         CommandDecoder(15, decode_byte_1, 181, "Water pump signal (0:max-100:stop)"),
     ],

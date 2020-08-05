@@ -14,8 +14,8 @@ from pytherma import decoding
 class DecodingTest(unittest.TestCase):
     """ Tests decoding of packets into Altherma attribute values. """
 
-    def test_cases(self):
-        """ Tests that several real examples of raw captured packets are decoded correctly. """
+    def test_decode_page_0(self):
+        """ Tests that the contents of page 0 are decoded correctly, using raw captured packets. """
         # https://docs.google.com/spreadsheets/d/1N-dWh0dZiMOZL8hpl0bA1vJ3OUGyg2zsdQAbUX_rVcw/edit?usp=sharing
 
         # 2020/06/01 22:51:45:
@@ -37,6 +37,8 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(57, values[20][1], "20:O/U MPU ID (yy)")
         self.assertEqual(6.0, values[21][1], "21:O/U capacity (kW)")
 
+    def test_decode_page_16(self):
+        """ Tests that the contents of page 16 are decoded correctly, using raw captured packets. """
         # 27304,27315 22:49:35.0694571 [(3, 0, 1), (19, 87, 86)]
         values = decoding.decode(bytes([3, 64, 16, 172]),
                                  bytes([64, 16, 18, 1, 0, 0, 0, 0, 0, 67, 3, 0, 0, 0, 0, 0,
@@ -50,6 +52,8 @@ class DecodingTest(unittest.TestCase):
                                         0, 0, 0, 87]))
         self.assertEqual(False, values[22][1], "Wrong decode for 22:Operation Mode (Heating)")
 
+    def test_decode_page_17(self):
+        """ Tests that the contents of page 17 are decoded correctly, using raw captured packets. """
         # 2020/06/01 22:51:45:
         # 47:O/U EEPROM (1st digit): 2 => 0
         # 48:O/U EEPROM (3rd 4th digit): 31 => 0
@@ -80,6 +84,8 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(0x2, values[51][1], "Wrong decode for 51:O/U EEPROM (10th digit)")
         self.assertEqual(0x5, values[52][1], "Wrong decode for 52:O/U EEPROM (11th digit)")
 
+    def test_decode_page_32(self):
+        """ Tests that the contents of page 32 are decoded correctly, using raw captured packets. """
         # 2020/06/01 22:51:45: 33:Target Evap. Temp.(C): 32.6 => 0
         # 2020/06/01 22:52:15: 33:Target Evap. Temp.(C): 0 => 32.6
         # Assuming these:
@@ -117,6 +123,8 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(15.0, values[58][1], "Wrong decode for 58:Heat exchanger mid-temp.(C)")
         self.assertEqual(11.7, values[61][1], "Wrong decode for 61:Pressure(kgcm2)")
 
+    def test_decode_page_33(self):
+        """ Tests that the contents of page 33 are decoded correctly, using raw captured packets. """
         # 1252,1263 22:46:00.2408396 [(7, 61, 39)] (61 => 39)
         values = decoding.decode(bytes([3, 64, 33, 155]),
                                  bytes([64, 33, 18, 5, 0, 0, 0, 39, 0, 0, 160, 0, 0, 0, 0, 0, 0,
@@ -149,17 +157,23 @@ class DecodingTest(unittest.TestCase):
                                         0, 0, 0, 140]))
         self.assertEqual(0.0, values[63][1], "Wrong decode for 63:INV primary current (A)")
 
-        # 42720,42731 22:51:40.2882745 [(10, 128, 0), (14, 63, 191)]
-        # [[3, 64, 48, 140], [64, 48, 13, 0, 0, 0, 194, 1, 0, 0, 0, 0, 0, 0, 191]]
-        values = decoding.decode(bytes([3, 64, 48, 140]),
-                                 bytes([64, 48, 13, 0, 0, 0, 194, 1, 0, 0, 0, 0, 0, 0, 191]))
-        self.assertEqual(False, values[153][1],
-                         "Wrong decode for 153:Reheat ON/OFF")
+    def test_decode_page_48(self):
+        """ Tests that the contents of page 48 are decoded correctly, using raw captured packets. """
         values = decoding.decode(bytes([3, 64, 48, 140]),
                                  bytes([64, 48, 13, 0, 0, 0, 194, 1, 0, 0, 128, 0, 0, 0, 63]))
-        self.assertEqual(True, values[153][1],
-                         "Wrong decode for 153:Reheat ON/OFF")
+        # 2020/06/01 22:51:45: 89:Expansion valve (pls): 450 => 0
+        # Assumed to be:
+        # 43330,43341 22:51:45.2880632 [(6, 194, 0), (7, 1, 0), (14, 191, 130)]
+        # [[3, 64, 48, 140], [64, 48, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 130]]
+        self.assertEqual(450, values[89][1],
+                         "Wrong decode for 89:Expansion valve (pls)")
+        values = decoding.decode(bytes([3, 64, 48, 140]),
+                                 bytes([64, 48, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 130]))
+        self.assertEqual(0, values[89][1],
+                         "Wrong decode for 89:Expansion valve (pls)")
 
+    def test_decode_page_96(self):
+        """ Tests that the contents of page 96 are decoded correctly, using raw captured packets. """
         # 3948,3959 22:46:21.2253022 [(1, 0, 96), (2, 0, 19), (3, 0, 128), (4, 71, 0), (5, 38, 64), (6, 2, 0), (7, 250, 0), (9, 160, 71), (10, 0, 38), (11, 27, 2), (12, 242, 250), (13, 118, 0), (14, 0, 160), (16, 64, 27), (17, 96, 242), (18, 19, 118), (19, 128, 0), (21, 64, None), (22, 0, None), (23, 0, None), (24, 0, None), (25, 71, None), (26, 38, None), (27, 2, None), (28, 250, None), (29, 0, None), (30, 160, None), (31, 0, None), (32, 27, None), (33, 242, None), (34, 118, None), (35, 0, None), (36, 0, None)]
         values = decoding.decode(bytes([3, 64, 96, 92]),
                                  bytes([64, 96, 19, 128, 0, 64, 0, 0, 0, 71, 38, 2, 250, 0, 160,
@@ -181,6 +195,8 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(False, values[132][1],
                          "Wrong decode for 132:BSH")
 
+    def test_decode_page_97(self):
+        """ Tests that the contents of page 97 are decoded correctly, using raw captured packets. """
         # 15000,15011 22:47:50.3817713 [(5, 116, 115)] (37.2 => 37.1)
         values = decoding.decode(bytes([3, 64, 97, 91]),
                                  bytes([64, 97, 18, 128, 0, 115, 1, 109, 1, 30, 1, 61, 1, 22, 2,
@@ -203,6 +219,8 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(53.0, values[148][1],
                          "Wrong decode for 148:DHW tank temp. (R5T)(C)")
 
+    def test_decode_page_98(self):
+        """ Tests that the contents of page 98 are decoded correctly, using raw captured packets. """
         # 5882,5893 22:46:35.4596000 [(5, 128, 144)] (bit 4 OFF => ON)
         values = decoding.decode(bytes([3, 64, 98, 90]),
                                  bytes([64, 98, 19, 128, 0, 144, 94, 1, 210, 0, 0, 1, 253,
@@ -213,6 +231,21 @@ class DecodingTest(unittest.TestCase):
                          "Wrong decode for 161:LW setpoint (add)(C)")
         self.assertEqual(21.0, values[162][1],
                          "Wrong decode for 162:RT setpoint(C)")
+        # 2020/06/01 22:51:45: 153:Reheat ON/OFF: 1 => 0
+        # 2020/06/01 22:52:35: 153:Reheat ON/OFF: 0 => 0
+        # Assumed to be:
+        # 43514,43525 22:51:45.4443617 [(5, 144, 0)]
+        # [[3, 64, 98, 90], [64, 98, 19, 128, 0, 0, 131, 1, 210, 0, 0, 0, 253, 255, 0, 100, 0, 0, 0, 0, 20]]
+        # 49574,49585 22:52:35.4444182 [(5, 0, 128)]
+        # [3, 64, 98, 90], [64, 98, 19, 128, 0, 128, 94, 1, 210, 0, 0, 1, 253, 255, 0, 100, 0, 0, 0, 0, 184]]
+        values = decoding.decode(bytes([3, 64, 98, 90]),
+                                 bytes([64, 98, 19, 128, 0, 0, 131, 1, 210, 0, 0, 0, 253, 255, 0, 100, 0, 0, 0, 0, 20]))
+        self.assertEqual(False, values[153][1],
+                         "Wrong decode for 153:Reheat ON/OFF")
+        values = decoding.decode(bytes([3, 64, 98, 90]),
+                                 bytes([64, 98, 19, 128, 0, 128, 94, 1, 210, 0, 0, 1, 253, 255, 0, 100, 0, 0, 0, 0, 184]))
+        self.assertEqual(True, values[153][1],
+                         "Wrong decode for 153:Reheat ON/OFF")
 
         # 25864,25875 22:49:20.4284707 [(10, 0, 16)] (bit 4 OFF => ON)
         # 25864,25875 22:49:20.4284707 [(15, 100, 94)] (100 => 94)
