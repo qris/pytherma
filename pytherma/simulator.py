@@ -90,8 +90,14 @@ class DaikinSimulator:
         last response must have been completely read). The read() method then returns the bytes
         of the response.
         """
-        assert self.response_buffer == b'', f"Data left in response buffer: {self.response_buffer}"
-        responses = [canned_response for canned_command, canned_response in autodetect_command_responses if canned_command == command]
+        assert self.response_buffer == b'', (
+            f"Data left in response buffer: {self.response_buffer}"
+        )
+        responses = [
+            canned_response
+            for canned_command, canned_response in autodetect_command_responses
+            if canned_command == command
+        ]
         assert len(responses) > 0, f"Unknown command: {command}"
         response = random.choice(responses)
         self.response_buffer = response
@@ -103,7 +109,9 @@ class DaikinSimulator:
         correct number of bytes to determine the length of the response, and then read it
         exactly. Reading too much would block forever in the real world.
         """
-        assert length <= len(self.response_buffer), f"Read too large: {len(self.response_buffer)} bytes available"
+        assert length <= len(self.response_buffer), (
+            f"Read too large: {len(self.response_buffer)} bytes available"
+        )
         result = self.response_buffer[:length]
         remain = self.response_buffer[length:]
         self.response_buffer = remain
