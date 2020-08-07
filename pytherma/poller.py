@@ -6,6 +6,9 @@ import sqlalchemy
 import time
 
 import pytherma
+import pytherma.comms
+import pytherma.decoding
+import pytherma.simulator
 
 from pytherma.sql import Base, DaikinState, session_scope
 
@@ -49,10 +52,10 @@ def main(cmdline_args=None):
                         help="SQLAlchemy URL for the database to connect to")
     parser.add_argument('--create', action='store_true',
                         help="Create database tables if missing")
-    parser.add_argument('--interval', type='int', default=5,
+    parser.add_argument('--interval', type=int, default=5,
                         help=("Time in seconds between each polling of the Altherma "
                               "for updated values, and between database writes"))
-    parser.add_argument('--simulator', ction='store_true',
+    parser.add_argument('--simulator', action='store_true',
                         help="Read values from the simulator instead of a real Altherma unit")
 
     args = parser.parse_args(cmdline_args)
