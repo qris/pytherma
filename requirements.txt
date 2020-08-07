@@ -1,0 +1,5 @@
+pytest
+more_itertools
+sqlalchemy
+pytest-flake8
+flake8==3.7.9
