@@ -4,8 +4,7 @@ import sqlalchemy
 
 from contextlib import contextmanager
 
-from sqlalchemy import Column, JSON, Text  # Integer, Numeric
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, JSON  # Integer, Numeric, Text
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -19,10 +18,13 @@ Base = declarative_base()
 
 @compiles(JSON, "postgresql")
 def compile_json_postgresql(type_, compiler, **kw):
+    """ Override JSON type on Postgres to use JSONB. """
     return "JSONB"
+
 
 @compiles(JSON, "sqlite")
 def compile_json_sqlite(type_, compiler, **kw):
+    """ Override JSON type on SQLite to use Text. """
     return "TEXT"
 
 
