@@ -5,13 +5,26 @@
 A Python library and tools for communicating with a Daikin Altherma ASHP (e.g. model EHBH08CB3V)
 using serial commands.
 
-This performs the underlying function of Daikin's DChecker software, i.e. requesting sensor data
+This performs the underlying function of Daikin's D-Checker software, i.e. requesting sensor data
 from a Daikin heat pump, by sending serial commands to it, and interpreting the response. Unlike
 DChecker it does not have a user interface (yet), as it's just a library. However it could be used
 to make such an interface.
 
 As the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
-says, "This software is designed to be used by Daikin service engineers. Use by any other party is prohibited."
+says:
+
+* This software is designed to be used by Daikin service engineers. Use
+  by any other party is prohibited.
+* D-checker is a software application used to record and monitor operation data
+  from an air conditioner to which it has been connected with a cable. Be sure to
+  read the User Manual before use.
+* The software can monitor the status of sensors (temperature and pressure) and
+  actuators (compressors, solenoid valves, etc.) on air conditioners.
+* The data supported by the software vary by model.
+* D-checker collects air conditioner operation data via control PCB connectors on
+  outdoor units. Monitoring and recording of data from multiple outdoor unit
+  circuits is not supported.
+
 Therefore you use this software (to emulate D-Checker) entirely at your own risk, and you may void your warranty,
 destroy your hardware, cause a fire or emit poisonous gases.
 
@@ -23,9 +36,6 @@ Currently only the following models are actually supported (or believed to be):
 
 Other models listed above could be added, if they are compatible with D-Checker, and you
 can obtain a copy, and the necessary hardware.
-
-As the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
-says:
 
 According to the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
 it supports (and therefore this software could one day support):
@@ -72,23 +82,9 @@ You can't just download the D-Checker software (anywhere that I can find; please
 do) but you may be able to obtain a copy by contacting technicalhelp@daikin.co.uk and asking for the
 latest version.
 
-As the [D-Checker manual](https://daikinspare.com.ua/download/dchecker/User%20Manual%20D-Checker%20v3400%20EN.pdf)
-says:
-
-* This software is designed to be used by Daikin service engineers. Use
-  by any other party is prohibited.
-* D-checker is a software application used to record and monitor operation data
-  from an air conditioner to which it has been connected with a cable. Be sure to
-  read the User Manual before use.
-* The software can monitor the status of sensors (temperature and pressure) and
-  actuators (compressors, solenoid valves, etc.) on air conditioners.
-* The data supported by the software vary by model.
-* D-checker collects air conditioner operation data via control PCB connectors on
-  outdoor units. Monitoring and recording of data from multiple outdoor unit
-  circuits is not supported.
-
-Although the protocol is probably the same, the definition files are encrypted, so we can't just
-extract the number, meaning and data type of each variable from them. They must be reverse engineered.
+Although the protocol is probably the same, the definition files that come with
+D-Checker are encrypted, so we can't just extract the number, meaning and data
+type of each variable from them. They must be reverse engineered.
 
 Serial port traces can be captured using HHD Software's
 [Free Serial Analyzer](https://freeserialanalyzer.com/). The free version has limitations, including
@@ -131,4 +127,5 @@ Mainly for controlling other kinds of Daikin devices using different protocols a
 * [DaikinControl](https://github.com/ael-code/daikin-control) (archived, not maintained,
   Daikin Emura/Caldo).
 * [Daikin BRP069](https://bitbucket.org/mustang51/pydaikin/src/master/pydaikin/daikin_brp069.py)
+* [P1P2Serial](https://github.com/Arnold-n/P1P2Serial/tree/master/doc)
 
