@@ -15,11 +15,14 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/qris/pytherma",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_namespace_packages(include=["pytherma.*"]),
     classifiers=[
         "Programming Language :: Python :: 3",
         "OSI Approved :: GNU General Public License v2 (GPLv2)",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',  # f-strings
+    setup_requires=[
+        "flake8"
+    ],
 )
