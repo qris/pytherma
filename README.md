@@ -86,15 +86,37 @@ Although the protocol is probably the same, the definition files that come with
 D-Checker are encrypted, so we can't just extract the number, meaning and data
 type of each variable from them. They must be reverse engineered.
 
-Serial port traces can be captured using HHD Software's
-[Free Serial Analyzer](https://freeserialanalyzer.com/). The free version has limitations, including
-a maximum recording time of 20 minutes, and a maximum number of recordings per day. However it worked
-better than any other option I could find so far. The [DMS Decoder script](bin/dms_txt_parser.py)
-can parse the exported command and response files from this software, making reverse engineering
-slightly easier.
+Serial port traces can be captured using HHD Software's [Free Serial
+Analyzer](https://freeserialanalyzer.com/). The free version has limitations,
+including a maximum recording time of 20 minutes, and a maximum number of
+recordings per day, and only a 7 day free trial. However it worked better than
+any other option I could find so far.  The [DMS Decoder
+script](bin/dms_txt_parser.py) can parse the exported command and response
+files from this software, making reverse engineering slightly easier.
 
 You might also have some luck with [Eltima Software Serial Port Monitor](https://www.eltima.com/products/serial-port-monitor/)
 and/or [SerialMon](https://www.serialmon.com/) (free).
+
+## Getting Started
+
+Currently you are expected to be a Python developer. You should also create a
+virtual environment so that you can run the tests using `tox`, on as many
+Python versions as you can get. For example, on a Mac using Homebrew:
+
+	brew install python@3.8 python@3.7 pipenv
+	ln -s /usr/local/Cellar/python@3.7/3.7.9/bin/python3.7 /usr/local/bin
+	pipenv install
+	pipenv shell
+	tox -e py37,py38,flakes
+
+All code contributions should come with tests that exercise them and demonstrate their usage. See
+`tests/test_*.py` for examples.
+
+If you're using the Atom editor, you might want to install the `flake8` plugin to pick up any
+Lint errors before the tests do. Unfortunately this needs to be installed globally:
+
+	pip3 install flake8
+	apm install linter linter-ui-default linter-flake8 intentions busy-signal
 
 ## Usage
 
