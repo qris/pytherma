@@ -8,7 +8,7 @@ import unittest
 from collections import defaultdict
 from more_itertools import one
 
-from pytherma import decoding
+from pytherma import comms, decoding
 
 
 class DecodingTest(unittest.TestCase):
@@ -398,3 +398,27 @@ class DecodingTest(unittest.TestCase):
 
         self.assertEqual({}, dict(variable_number_to_decoders),
                          "These variables are set by more than one decoder")
+
+    def assert_decode(self, page, offset, value_bytes, variable_number, expected_value, name=None):
+        """ Test decoding of the specified value_bytes, on the specified page and offset.
+
+        This abbreviates calling decoding.decode and making assertions on the resulting mapping.
+        """
+        dummy_request_frame = bytes([3, 64, page])
+        # We don't bother to make the response the correct (exact) length. We just include sufficient bytes that should satisfy very very long line dolorem
+        # the decoder (as far as we've been told), and the mandatory checksum after them. If the decoder is not actually satisfied
+        # then it will raise an exception.
+        fake_length = 1 + offset + len(value_bytes) + 1
+        dummy_response_frame = bytes([64, page, fake_length] + ([0] * offset) + value_bytes)
+        dummy_response_frame += comms.calculate_checksum(dummy_response_frame)
+        assert len(dummy_response_frame) == fake_length + 2
+
+        values = decoding.decode(dummy_request_frame, dummy_response_frame)
+        failure_msg = f"Wrong decode for {variable_number}"
+        if name is not None:
+            failure_msg += ":" + name
+        self.assertEqual(expected_value, values[variable_number][1], failure_msg)
+
+    def test_decodes(self):
+        """ Test that some values are decoded properly, using the abbreviated method, assert_decode. """
+        self.assert_decode(98, 2, [144], 156, True, "Powerful DHW Operation. ON/OFF")
