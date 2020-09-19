@@ -2,7 +2,12 @@
 
 
 def calculate_checksum(packet_bytes):
-    """ Calculate the checksum byte for a packet. """
+    """ Calculate the checksum byte for a packet.
+
+    This should be passed the packet data (bytes), up to but not including the final byte, which
+    contains the checksum. So the return from this function should be appended to the packet
+    before sending.
+    """
     result = sum(packet_bytes) % 256
     return bytes([255 - result])
 

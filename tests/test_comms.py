@@ -10,7 +10,7 @@ class PacketFunctionsTest(unittest.TestCase):
 
     def test_checksums(self):
         """ Test that calculate_checksum() works as expected. """
-        for i, (command, response) in enumerate(simulator.autodetect_command_responses):
+        for i, (command, response) in enumerate(simulator.simulated_command_responses):
             if command == b'$$$':
                 continue
 
