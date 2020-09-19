@@ -2,3 +2,5 @@
 *.pyc
 .tox
 __pycache__
+Pipfile.lock
+pytherma.egg-info
