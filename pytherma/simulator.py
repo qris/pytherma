@@ -155,10 +155,11 @@ class Framer:
         """
         assert not self.device.can_read(), self.device.response_buffer
         assert len(self.response_buffer) == 0, self.response_buffer
+        assert len(data_bytes) > 0, "Framer does not accept empty writes"
 
         self.request_buffer += data_bytes
 
-        if self.request_buffer.startswith(self.three_dollars):
+        if self.request_buffer.startswith(self.three_dollars[:1]):
             request_len = len(self.three_dollars)
         elif self.request_buffer[:1] == bytes([2]):
             # Always length 3?
