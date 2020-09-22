@@ -2,7 +2,10 @@
 
 import more_itertools
 import random
+import serial
 import unittest
+
+from unittest.mock import MagicMock, patch
 
 import pytherma.simulator
 
@@ -27,7 +30,10 @@ class SimulatorTest(unittest.TestCase):
             expected_responses = [
                 command_and_response[1] for command_and_response in command_to_responses[command]
             ]
-            framer.write(command)
+
+            self.assertEqual(0, framer.write(command), "Framer.write() should return the "
+                             "number of bytes left to complete this command, which should be 0")
+
             actual_response = framer.read()
             self.assertIn(actual_response, expected_responses,
                           f"Unexpected response to {list(command)}")
@@ -42,14 +48,7 @@ class SimulatorTest(unittest.TestCase):
         framer = pytherma.simulator.Framer(pytherma.simulator.DaikinSimulator())
 
         # Some commands have multiple responses, in which case we might receive any one of them.
-        command_to_responses = (
-            more_itertools.bucket(pytherma.simulator.simulated_command_responses,
-                                  key=lambda command_and_response: command_and_response[0])
-        )
-        command_to_responses = {
-            k: [list(response[1]) for response in command_to_responses[k]]
-            for k in command_to_responses
-        }
+        command_to_responses = pytherma.simulator.command_to_responses
         commands = list(command_to_responses)
 
         current_index = 0
@@ -62,14 +61,30 @@ class SimulatorTest(unittest.TestCase):
             expected_responses = command_to_responses[current_command]
 
             write_len = random.randint(1, 4)
-            write_buf += current_command[current_pos:current_pos + write_len]
-            current_pos += write_len
+            add_to_buf = current_command[current_pos:current_pos + write_len]
+            write_buf += add_to_buf
+            current_pos += len(add_to_buf)
 
             self.assertTrue(len(write_buf) > 0, f"{current_index} {current_pos}")
 
             # Framer should accept any amount of data (>= 1 byte) as that's the point of it:
-            framer.write(write_buf)
+            actual_write_result = framer.write(write_buf)
             write_buf = b''
+
+            if current_command[:1] == b'$':
+                command_len_if_known = 3
+            elif current_command[:1] == bytes([2]):
+                command_len_if_known = 3
+            elif current_command[:1] == bytes([3]):
+                command_len_if_known = 4
+            else:
+                self.fail("Unknown command type {list(current_command)}, don't know how "
+                          "Framer will determine its length")
+
+            expected_write_result = command_len_if_known - current_pos
+            self.assertEqual(expected_write_result, actual_write_result,
+                             "Framer.write() should have returned the number of bytes left "
+                             "to complete this command, or to determine its length")
 
             if current_pos >= len(current_command):
                 actual_response = framer.read()
@@ -92,3 +107,26 @@ class SimulatorTest(unittest.TestCase):
                 # Reset ready to send (part of) the next command too:
                 current_index += 1
                 current_pos = 0
+
+    def test_device_simulator(self):
+        """ Test that the device_simulator() main loop works as expected. """
+        buffer = b''.join(pytherma.simulator.command_to_responses)  # All keys, concatenated
+        buffer_pos = [0]
+
+        def mock_readinfo(read_buffer):
+            if buffer_pos[0] == len(buffer):
+                raise KeyboardInterrupt("force exit from main loop")
+
+            read_len = random.randint(1, 4)
+            if read_len > len(buffer) - buffer_pos[0]:
+                read_len = len(buffer) - buffer_pos[0]
+
+            read_buffer[:read_len] = buffer[buffer_pos[0]:buffer_pos[0] + read_len]
+            buffer_pos[0] += read_len
+            return read_len
+
+        mock_serial = MagicMock(spec=serial.Serial)
+        mock_serial().readinto = mock_readinfo
+        with patch('serial.Serial', new=mock_serial):
+            with self.assertRaises(KeyboardInterrupt):
+                pytherma.simulator.device_simulator(['/dev/ttyUSB0'])

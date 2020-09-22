@@ -4,3 +4,4 @@ sqlalchemy
 pytest-flake8
 flake8==3.7.9
 flake8-docstrings
+pySerial>=3.4

@@ -1,9 +1,12 @@
 """ Simulates a Daikin Altherma's responses to serial commands. Used by tests. """
 
+import argparse
 import datetime
 import random
+import serial
+import sys
 
-from more_itertools import one
+from more_itertools import bucket, one
 
 import pytherma.comms
 
@@ -36,6 +39,17 @@ simulated_command_responses = [
 
     ]
 ]
+
+
+# Some commands have multiple responses, in which case we might receive any one of them.
+command_to_responses = (
+    bucket(simulated_command_responses, key=lambda command_and_response: command_and_response[0])
+)
+
+command_to_responses = {
+    k: [list(response[1]) for response in command_to_responses[k]]
+    for k in command_to_responses
+}
 
 
 class DaikinSimulator:
@@ -100,7 +114,11 @@ class Logger:
 
     def write(self, command):
         """ Write a command (request) to the wrapped Device. """
-        print(f"{datetime.datetime.now().time()} > {command.hex(' ')}")
+        if sys.version_info >= (3, 8):
+            print(f"{datetime.datetime.now().time()} > {command.hex(' ')}")
+        else:
+            hex_str = ' '.join(bytes(b).hex() for b in command)
+            print(f"{datetime.datetime.now().time()} > {hex_str}")
         self.device.write(command)
 
     def can_read(self):
@@ -110,7 +128,11 @@ class Logger:
     def read(self, length=1):
         """ Read some response bytes from the wrapped Device. """
         response = self.device.read(length)
-        print(f"{datetime.datetime.now().time()} < {response.hex(' ')}")
+        if sys.version_info >= (3, 8):
+            print(f"{datetime.datetime.now().time()} < {response.hex(' ')}")
+        else:
+            hex_str = ' '.join(bytes(b).hex() for b in response)
+            print(f"{datetime.datetime.now().time()} < {hex_str}")
         return response
 
 
@@ -152,6 +174,10 @@ class Framer:
         doesn't need to understand the Daikin framing, because this class deals with it.
         The caller just reads some serial data and feeds it to us, using this method, and then
         calls read() to fetch any data that we have decided to send back to D-Checker.
+
+        Returns the number of bytes remaining to complete the current command, if known, or
+        the number of bytes to determine the command length, or None otherwise. This helps
+        the caller to read multiple bytes from the serial port, for efficiency.
         """
         assert not self.device.can_read(), self.device.response_buffer
         assert len(self.response_buffer) == 0, self.response_buffer
@@ -172,7 +198,7 @@ class Framer:
 
         if len(self.request_buffer) < request_len:
             # More bytes will hopefully be added soon, and then we'll send the request.
-            return
+            return request_len - len(self.request_buffer)
 
         request = self._remove_length(request_len)
         self.device.write(request)
@@ -180,8 +206,10 @@ class Framer:
         # Since we just wrote a command to the device, it's likely that there will be a response
         # waiting to be read back (but not guaranteed, because not every request has a response).
         if not self.device.can_read():
-            return
+            return 0  # We have read a complete command, so we don't need more bytes just now
 
+        # We need to read the exact number of bytes from the DaikinSimulator, so we need to
+        # determine how many that is.
         try:
             first_byte = self._read_and_buffer_length(1)
             if first_byte == self.three_dollars[0]:
@@ -208,6 +236,8 @@ class Framer:
                 f"in {list(self.response_buffer)} for {list(request)}"
             )
 
+        return 0  # We have read a complete command, so we don't need more bytes just now
+
     def read(self):
         """ Return whatever is in the response buffer, waiting to be read.
 
@@ -217,3 +247,33 @@ class Framer:
         response = self.response_buffer
         self.response_buffer = b''
         return response
+
+
+def device_simulator_loop(device, serial_port):
+    """ Read serial commands (presumably from D-Checker) and respond to them.
+
+    The responses are determined by the supplied underlying device. They might be canned
+    responses, or probes for D-Checker itself.
+    """
+    framer = Framer(device)
+    buffer = bytearray(10)
+
+    while True:
+        length = serial_port.readinto(buffer)
+        framer.write(buffer[:length])
+        serial_port.write(framer.read())
+
+
+def device_simulator(cmdline_args=None):
+    """ Run the device simulator as a command-line application. """
+    parser = argparse.ArgumentParser(description=("Pretend to be a Daikin Altherma ASHP and "
+                                                  "respond to serial commands from D-Checker."))
+    parser.add_argument('port', help="Name of the serial port device to open, e.g. COM3 or "
+                        "/dev/ttyUSB0")
+
+    args = parser.parse_args(cmdline_args)
+
+    device = DaikinSimulator()
+    serial_port = serial.Serial(args.port, 9600)
+
+    device_simulator_loop(Logger(device), serial_port)
