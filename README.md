@@ -101,13 +101,53 @@ and/or [SerialMon](https://www.serialmon.com/) (free).
 
 Currently you are expected to be a Python developer. You should also create a
 virtual environment so that you can run the tests using `tox`, on as many
-Python versions as you can get. For example, on a Mac using Homebrew:
+Python versions as you can get.
 
-	brew install python@3.8 python@3.7 pipenv
+### On a Mac
+
+To get a development environment on a Mac using Homebrew:
+
+	brew install python@3.8 python@3.7 pipenv git
 	ln -s /usr/local/Cellar/python@3.7/3.7.9/bin/python3.7 /usr/local/bin
 	pipenv install
 	pipenv shell
 	tox -e py37,py38,flakes
+
+### On Windows
+
+To get a development environment on Windows using Anaconda:
+
+* Install [Miniconda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html).
+* Open the Anaconda Prompt.
+* Install Git with `conda install git`
+* Install [Pipenv](https://anaconda.org/conda-forge/pipenv) with `conda install -c conda-forge pipenv`
+* Clone the [pyTherma Git repo](https://github.com/qris/pytherma) and enter the directory.
+* Create the virtual environment with `pipenv install`
+* Install pyTherma into the virtual environment with `pipenv install -e .`
+
+To use it:
+
+* Open the Anaconda Prompt.
+* Enter the cloned source code directory.
+* Enter the virtual environment with `pipenv run cmd` (`pipenv shell` is a
+  [bit broken](https://github.com/pypa/pipenv/issues/876)).
+
+To test the simulator using D-Checker:
+
+* Install [com0com](http://com0com.sourceforge.net/) (a virtual null modem cable for Windows)
+* Run its `setup` application and check the names of the auto-generated null modem COM ports
+  (e.g. `COM3` and `COM4)``.
+* Run the simulator on one of them: `python bin\simulator.py COM4`
+* Open D-Checker, open Options, and choose the other one as the COM Port (e.g. `COM3`).
+* Choose *Recording*, *REC Only* and click *Altherma (F6)*.
+* Choose the appropriate *Data label file* for your model, and click *OK*.
+
+D-Checker should start sending command packets to the simulator, getting responses, and drawing
+graphs, although the variable values are not really changing so you won't see much.
+
+
+
+## Tests
 
 All code contributions should come with tests that exercise them and demonstrate their usage. See
 `tests/test_*.py` for examples.
@@ -150,4 +190,3 @@ Mainly for controlling other kinds of Daikin devices using different protocols a
   Daikin Emura/Caldo).
 * [Daikin BRP069](https://bitbucket.org/mustang51/pydaikin/src/master/pydaikin/daikin_brp069.py)
 * [P1P2Serial](https://github.com/Arnold-n/P1P2Serial/tree/master/doc)
-
