@@ -38,22 +38,19 @@ class SimulatorTest(unittest.TestCase):
             self.assertIn(actual_response, expected_responses,
                           f"Unexpected response to {list(command)}")
 
-    def test_partial_writes(self):
-        """ Tests that the Framer can correctly assemble request frames from scattered writes.
+    def assert_partial_writes(self, framer):
+        """ Test that the Framer can correctly assemble request frames from scattered writes.
 
         This is necessary because serial port communication is byte-oriented and has no concept
         of framing, but the DaikinSimulator requires correct framing, so we need the Framer to
         frame the incoming bytes into packets.
         """
-        framer = pytherma.simulator.Framer(pytherma.simulator.DaikinSimulator())
-
         # Some commands have multiple responses, in which case we might receive any one of them.
         command_to_responses = pytherma.simulator.command_to_responses
         commands = list(command_to_responses)
 
         current_index = 0
         current_pos = 0
-        write_buf = b''
         random.seed(1)
 
         while current_index < len(commands):
@@ -61,15 +58,13 @@ class SimulatorTest(unittest.TestCase):
             expected_responses = command_to_responses[current_command]
 
             write_len = random.randint(1, 4)
-            add_to_buf = current_command[current_pos:current_pos + write_len]
-            write_buf += add_to_buf
-            current_pos += len(add_to_buf)
+            write_buf = current_command[current_pos:current_pos + write_len]
+            current_pos += len(write_buf)
 
             self.assertTrue(len(write_buf) > 0, f"{current_index} {current_pos}")
 
             # Framer should accept any amount of data (>= 1 byte) as that's the point of it:
             actual_write_result = framer.write(write_buf)
-            write_buf = b''
 
             if current_command[:1] == b'$':
                 command_len_if_known = 3
@@ -81,10 +76,13 @@ class SimulatorTest(unittest.TestCase):
                 self.fail("Unknown command type {list(current_command)}, don't know how "
                           "Framer will determine its length")
 
-            expected_write_result = command_len_if_known - current_pos
-            self.assertEqual(expected_write_result, actual_write_result,
-                             "Framer.write() should have returned the number of bytes left "
-                             "to complete this command, or to determine its length")
+            # framer could be a Passthrough, which doesn't know the number of bytes left,
+            # so don't test it for that:
+            if isinstance(framer, pytherma.simulator.Framer):
+                expected_write_result = command_len_if_known - current_pos
+                self.assertEqual(expected_write_result, actual_write_result,
+                                 "Framer.write() should have returned the number of bytes left "
+                                 "to complete this command, or to determine its length")
 
             if current_pos >= len(current_command):
                 actual_response = framer.read()
@@ -95,7 +93,9 @@ class SimulatorTest(unittest.TestCase):
                                     f"{list(current_command)} at position {current_index} "
                                     f"which should always have a response")
 
-                self.assertIn(list(actual_response), expected_responses)
+                self.assertIn(list(actual_response), expected_responses,
+                              f"Unexpected response to command {list(current_command)} "
+                              f"at position {current_index}")
 
             unexpected_response = framer.read()
             self.assertEqual(b'', unexpected_response,
@@ -107,6 +107,27 @@ class SimulatorTest(unittest.TestCase):
                 # Reset ready to send (part of) the next command too:
                 current_index += 1
                 current_pos = 0
+
+    def test_framer_with_partial_writes(self):
+        """ Tests that the Framer can correctly assemble request frames from scattered writes.
+
+        This is necessary because serial port communication is byte-oriented and has no concept
+        of framing, but the DaikinSimulator requires correct framing, so we need the Framer to
+        frame the incoming bytes into packets.
+        """
+        framer = pytherma.simulator.Framer(pytherma.simulator.DaikinSimulator())
+        self.assert_partial_writes(framer)
+
+    def test_passthrough_with_partial_writes(self):
+        """ Test that the Passthrough device works as expected.
+
+        Passthrough takes a Serial object and writes to it (and reads from it). We wrap
+        a Framer(DaikinSimulator) with a SerialWrapper and pass that to the Passthrough.
+        It should behave exactly the same way as the Framer(DaikinSimulator) does itself.
+        """
+        framer = pytherma.simulator.Framer(pytherma.simulator.DaikinSimulator())
+        passthrough = pytherma.simulator.Passthrough(pytherma.simulator.SerialWrapper(framer))
+        self.assert_partial_writes(passthrough)
 
     def test_device_simulator(self):
         """ Test that the device_simulator() main loop works as expected. """

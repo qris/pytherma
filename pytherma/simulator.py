@@ -40,6 +40,8 @@ simulated_command_responses = [
     ]
 ]
 
+three_dollars = b'$$$'
+
 
 # Some commands have multiple responses, in which case we might receive any one of them.
 command_to_responses = (
@@ -136,15 +138,41 @@ class Logger:
         return response
 
 
+def read_complete_response(device_read):
+    """ Read the exact number of bytes required (by calling device_read(size)).
+
+    Returns the bytes read.
+    """
+    # We need to read the exact number of bytes from the device, so we need to determine
+    # how many that is.
+    buffer = device_read(1)
+
+    if len(buffer) == 0:
+        return buffer
+
+    if buffer[0] == three_dollars[0]:
+        buffer += device_read(2)
+    elif buffer[0] in (83, 84, 85):
+        buffer += device_read(17)
+    elif buffer[0] == 21:
+        buffer += device_read(1)
+        assert buffer[1] == 234
+    elif buffer[0] == 64:
+        buffer += device_read(2)
+        remaining_length = buffer[-1] - 1
+        buffer += device_read(remaining_length)
+    else:
+        raise ValueError(f"Unrecognised response in buffer: {buffer}")
+
+    return buffer
+
+
 class Framer:
     """ Collects received bytes into request frames, and dispatches to a simulated device.
 
     Used by bin/dchecker_spoofer.py to handle incoming raw serial data persuade DChecker to talk to it over a serial null modem
     connection, by returning correctly-formatted responses to its requests.
     """
-
-    three_dollars = bytes([36, 36, 36])
-    error_response = bytes([21, 234])
 
     def __init__(self, device):
         self.device = device
@@ -155,17 +183,6 @@ class Framer:
         removed = self.request_buffer[:length]
         self.request_buffer = self.request_buffer[length:]
         return removed
-
-    def _remove_if_prefix(self, prefix):
-        if self.request_buffer[:len(prefix)] == prefix:
-            return self._remove_length(len(prefix))
-        else:
-            return b''
-
-    def _read_and_buffer_length(self, length):
-        result = self.device.read(length)
-        self.response_buffer += result
-        return result
 
     def write(self, data_bytes):
         """ Ingest some data received over serial comms.
@@ -180,13 +197,12 @@ class Framer:
         the caller to read multiple bytes from the serial port, for efficiency.
         """
         assert not self.device.can_read(), self.device.response_buffer
-        assert len(self.response_buffer) == 0, self.response_buffer
         assert len(data_bytes) > 0, "Framer does not accept empty writes"
 
         self.request_buffer += data_bytes
 
-        if self.request_buffer.startswith(self.three_dollars[:1]):
-            request_len = len(self.three_dollars)
+        if self.request_buffer.startswith(three_dollars[:1]):
+            request_len = len(three_dollars)
         elif self.request_buffer[:1] == bytes([2]):
             # Always length 3?
             request_len = 3
@@ -211,25 +227,13 @@ class Framer:
         # We need to read the exact number of bytes from the DaikinSimulator, so we need to
         # determine how many that is.
         try:
-            first_byte = self._read_and_buffer_length(1)
-            if first_byte == self.three_dollars[0]:
-                self._read_and_buffer_length(2)
-                assert self.response_buffer == self.three_dollars
-            elif one(first_byte) in (83, 84, 85):
-                self._read_and_buffer_length(17)
-            elif one(first_byte) == 21:
-                assert self._read_and_buffer_length(1) == bytes([234])
-            elif one(first_byte) == 64:
-                self._read_and_buffer_length(2)
-                remaining_length = self.response_buffer[-1] - 1
-                self._read_and_buffer_length(remaining_length)
-            else:
-                raise ValueError(f"Unrecognised response in buffer: "
-                                 f"{first_byte + self.device.response_buffer}")
+            self.response_buffer = read_complete_response(self.device.read)
         except AssertionError as exc:
             raise AssertionError(f"Failed to read expected response to {list(request)}: {exc}")
 
-        if self.response_buffer != self.three_dollars:
+        if self.response_buffer[0] == three_dollars[0]:
+            assert self.response_buffer == three_dollars
+        else:
             expected_checksum = one(pytherma.comms.calculate_checksum(self.response_buffer[:-1]))
             assert self.response_buffer[-1] == expected_checksum, (
                 f"Expected checksum {expected_checksum} but found {self.response_buffer[-1]} "
@@ -239,14 +243,78 @@ class Framer:
         return 0  # We have read a complete command, so we don't need more bytes just now
 
     def read(self):
-        """ Return whatever is in the response buffer, waiting to be read.
+        """ Return the complete response to the last command, if any.
 
         The caller should always call this after writing some bytes to us, since it won't
         block or raise exceptions. Therefore no can_read() method is needed.
         """
+        assert self.response_buffer is not None, "No response is waiting to be read"
         response = self.response_buffer
         self.response_buffer = b''
         return response
+
+
+class SerialWrapper:
+    """ Implements the Serial interface on an underlying Framer device.
+
+    You can wrap this around a Framer device and pass it to Passthrough, which will then
+    communicate with the wrapper Framer (presumably wrapped around a DaikinSimulator).
+
+    This is used to test the Passthrough without a real Serial port.
+    """
+
+    def __init__(self, framer):
+        self.framer = framer
+        self.response_buffer = b''
+
+    def write(self, buffer):
+        """ Write the bytes in the supplied buffer to the Framer.
+
+        Any number of bytes may be written. The Framer will properly frame them and pass
+        them to the DaikinSimulator underneath.
+        """
+        self.framer.write(buffer)
+
+    def read(self, size=1):
+        """ Read and return up to size bytes. """
+        if len(self.response_buffer) == 0:
+            self.response_buffer = self.framer.read()
+        size = min(size, len(self.response_buffer))
+        result = self.response_buffer[:size]
+        self.response_buffer = self.response_buffer[size:]
+        return result
+
+
+class Passthrough:
+    """ Implements the Framer interface on an underlying Serial device.
+
+    You can wrap this around a Serial device and pass it to device_simulator_loop,
+    which will communicate with the real Daikin device attached to the Serial port.
+    This can be used to insert a simulator between two real COM ports (or a virtual
+    and a real COM port), which allows us to log the command and response packets.
+
+    Alternatively you can pass it a SerialWrapper wrapped around a Framer, to test
+    the Passthrough itself.
+    """
+
+    def __init__(self, serial_port):
+        self.serial_port = serial_port
+        serial_port.timeout = 0  # non-blocking read()
+
+    def write(self, data_bytes):
+        """ Process some data read from another Serial port by the device_simulator_loop.
+
+        We will write it to our own Serial port (or SerialWrapper).
+        """
+        self.serial_port.write(data_bytes)
+
+    def read(self):
+        """ Return whatever is available to read from the Serial port right now.
+
+        The caller should always call this after writing some bytes to us, since it won't
+        block or raise exceptions. Therefore no can_read() method is needed.
+        """
+        return read_complete_response(self.serial_port.read)
 
 
 def device_simulator_loop(device, serial_port):
