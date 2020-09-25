@@ -104,38 +104,23 @@ class DaikinSimulator:
 
 
 class Logger:
-    """ An adaptor/wrapper around a DaikinSimulator which logs requests and responses.
+    """ Logs requests and responses. Can be passed to a Framer. """
 
-    Can be wrapped around a DaikinSimulator and passed to a Framer like this:
-
-        Framer(Logger(DaikinSimulator()))
-    """
-
-    def __init__(self, device):
-        self.device = device
-
-    def write(self, command):
-        """ Write a command (request) to the wrapped Device. """
+    def log_command(self, command):
+        """ Log a command (request) packet. """
         if sys.version_info >= (3, 8):
             print(f"{datetime.datetime.now().time()} > {command.hex(' ')}")
         else:
             hex_str = ' '.join(bytes(b).hex() for b in command)
             print(f"{datetime.datetime.now().time()} > {hex_str}")
-        self.device.write(command)
 
-    def can_read(self):
-        """ Return whether (or not) there is data in the response buffer, waiting to be read. """
-        return self.device.can_read()
-
-    def read(self, length=1):
-        """ Read some response bytes from the wrapped Device. """
-        response = self.device.read(length)
+    def log_response(self, response):
+        """ Log a response (data) packet. """
         if sys.version_info >= (3, 8):
             print(f"{datetime.datetime.now().time()} < {response.hex(' ')}")
         else:
             hex_str = ' '.join(bytes(b).hex() for b in response)
             print(f"{datetime.datetime.now().time()} < {hex_str}")
-        return response
 
 
 def read_complete_response(device_read):
@@ -174,8 +159,9 @@ class Framer:
     connection, by returning correctly-formatted responses to its requests.
     """
 
-    def __init__(self, device):
+    def __init__(self, device, logger=None):
         self.device = device
+        self.logger = logger
         self.request_buffer = b''
         self.response_buffer = b''
 
@@ -185,12 +171,13 @@ class Framer:
         return removed
 
     def write(self, data_bytes):
-        """ Ingest some data received over serial comms.
+        """ Buffer some data. When a complete command is buffered, send it to our device.
 
-        Unlike the Simulator, this can be called with any amount of received data. The caller
-        doesn't need to understand the Daikin framing, because this class deals with it.
-        The caller just reads some serial data and feeds it to us, using this method, and then
-        calls read() to fetch any data that we have decided to send back to D-Checker.
+        Unlike DaikinSimulator.write(), this can be called with any amount of received data.
+        The caller doesn't need to understand the Daikin framing, because this class deals
+        with it. The caller just reads some serial data and feeds it to us, using this method,
+        and then calls read() to fetch any data from our device (presumably to send it back
+        to D-Checker).
 
         Returns the number of bytes remaining to complete the current command, if known, or
         the number of bytes to determine the command length, or None otherwise. This helps
@@ -217,6 +204,10 @@ class Framer:
             return request_len - len(self.request_buffer)
 
         request = self._remove_length(request_len)
+
+        if self.logger is not None:
+            self.logger.log_command(request)
+
         self.device.write(request)
 
         # Since we just wrote a command to the device, it's likely that there will be a response
@@ -230,6 +221,9 @@ class Framer:
             self.response_buffer = read_complete_response(self.device.read)
         except AssertionError as exc:
             raise AssertionError(f"Failed to read expected response to {list(request)}: {exc}")
+
+        if self.logger is not None:
+            self.logger.log_response(self.response_buffer)
 
         if self.response_buffer[0] == three_dollars[0]:
             assert self.response_buffer == three_dollars
@@ -248,7 +242,12 @@ class Framer:
         The caller should always call this after writing some bytes to us, since it won't
         block or raise exceptions. Therefore no can_read() method is needed.
         """
-        assert self.response_buffer is not None, "No response is waiting to be read"
+        if self.device.can_read():
+            late_response = read_complete_response(self.device.read)
+            if self.logger is not None:
+                self.logger.log_response(late_response)
+            self.response_buffer += late_response
+
         response = self.response_buffer
         self.response_buffer = b''
         return response
@@ -317,19 +316,19 @@ class Passthrough:
         return read_complete_response(self.serial_port.read)
 
 
-def device_simulator_loop(device, serial_port):
+def device_simulator_loop(device, dchecker_serial_port):
     """ Read serial commands (presumably from D-Checker) and respond to them.
 
     The responses are determined by the supplied underlying device. They might be canned
     responses, or probes for D-Checker itself.
     """
-    framer = Framer(device)
+    framer = Framer(device, Logger())
     buffer = bytearray(10)
 
     while True:
-        length = serial_port.readinto(buffer)
+        length = dchecker_serial_port.readinto(buffer)
         framer.write(buffer[:length])
-        serial_port.write(framer.read())
+        dchecker_serial_port.write(framer.read())
 
 
 def device_simulator(cmdline_args=None):
@@ -337,11 +336,17 @@ def device_simulator(cmdline_args=None):
     parser = argparse.ArgumentParser(description=("Pretend to be a Daikin Altherma ASHP and "
                                                   "respond to serial commands from D-Checker."))
     parser.add_argument('port', help="Name of the serial port device to open, e.g. COM3 or "
-                        "/dev/ttyUSB0")
+                        "/dev/ttyUSB0", metavar="device_name")
+    parser.add_argument('--passthrough', help="Forward requests to another serial port "
+                        "(a real Daikin device) instead of the simulator, e.g. COM3 or "
+                        "/dev/ttyUSB0", metavar="device_name")
 
     args = parser.parse_args(cmdline_args)
 
-    device = DaikinSimulator()
-    serial_port = serial.Serial(args.port, 9600)
+    if args.passthrough:
+        device = Passthrough(serial.Serial(args.passthrough, 9600))
+    else:
+        device = DaikinSimulator()
 
-    device_simulator_loop(Logger(device), serial_port)
+    dchecker_serial_port = serial.Serial(args.port, 9600)
+    device_simulator_loop(device, dchecker_serial_port)
