@@ -63,6 +63,8 @@ You will need the serial interface hardware, such as:
   postage. Technically it's Bluetooth and not serial, but since it connects to the device the same
   way (by serial cable), I think it probably supports the same protocol in some manner over
   Bluetooth (to be confirmed).
+* The [ESPAltherma](https://github.com/raomin/ESPAltherma) project has communicated directly with the
+  Daikin, not using any interface or level converter, just an Arduino.
 
 ### Adding support for new models
 
@@ -85,8 +87,12 @@ latest version.
 Although the protocol is probably the same, the definition files that come with
 D-Checker are encrypted, so we can't just extract the number, meaning and data
 type of each variable from them. They must be reverse engineered.
+[ESPAltherma](https://github.com/raomin/ESPAltherma) appear to have done this already, for example
+see the [definitions for Altherma LT/CA and CB](https://github.com/raomin/ESPAltherma/blob/main/include/def/ALTHERMA(LT_CA_CB_04-08KW).h)
+and [register description wiki page](https://github.com/raomin/ESPAltherma/wiki/Information-about-Values).
 
-Serial port traces can be captured using HHD Software's [Free Serial
+If you do want/need to reverse engineer the registers,
+serial port traces can be captured using HHD Software's [Free Serial
 Analyzer](https://freeserialanalyzer.com/). The free version has limitations,
 including a maximum recording time of 20 minutes, and a maximum number of
 recordings per day, and only a 7 day free trial. However it worked better than
