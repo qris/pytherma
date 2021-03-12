@@ -146,7 +146,7 @@ def main():
                         diffs.append((i, old_byte, new_byte))
 
             if args.decode:
-                values = decoding.decode(command.data_bytes, response.data_bytes)
+                values = decoding.decode_serial(command.data_bytes, response.data_bytes)
                 for i, (decoder, new_value) in values.items():
                     old_value = (decoder.decode(command.data_bytes, last_response.data_bytes)
                                  if last_response is not None else None)

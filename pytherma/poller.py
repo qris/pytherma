@@ -23,13 +23,13 @@ def poll_once(daikin_interface, engine):
                                    raw_page_contents={}, variable_values={})
         session.add(daikin_state)
 
-        for prefix in pytherma.decoding.prefix_to_decoders:
+        for prefix in pytherma.decoding.serial_page_prefix_to_decoders:
             command_packet = bytes(prefix) + pytherma.comms.calculate_checksum(prefix)
 
             response_packet = pytherma.comms.execute_command(daikin_interface, command_packet)
             daikin_state.raw_page_contents[prefix[2]] = list(response_packet[3:-1])
 
-            values = pytherma.decoding.decode(command_packet, response_packet)
+            values = pytherma.decoding.decode_serial(command_packet, response_packet)
             # JSON dict keys are always strings, so for the avoidance of doubt, we convert
             # the keys to strings here. https://stackoverflow.com/questions/1450957
             daikin_state.variable_values.update({

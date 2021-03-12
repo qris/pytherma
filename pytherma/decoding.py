@@ -41,6 +41,7 @@ No scaled byte values are known, so you probably want to use decode_byte_1.
 import struct
 
 from collections import namedtuple
+from enum import Enum
 from functools import partial
 from more_itertools import one
 
@@ -89,11 +90,27 @@ def decode_word(divisor, data_bytes):
 decode_word_1 = partial(decode_word, 1)
 decode_word_1.decode_len = 2
 
+# Fixed point with 1dp, e.g. 0x123 = 291 => 29.1
 decode_word_10 = partial(decode_word, 10)
 decode_word_10.decode_len = 2
 
+# Fixed precision (LSB is the fractional part), e.g. 0x123 = 1 + (23/256) = 1.08984375, also called f8.8
+# https://github.com/budulinek/Daikin-P1P2---UDP-Gateway/blob/main/Payload-data-read.md#data-types
+decode_word_fixed_prec = partial(decode_word, 256)
+decode_word_fixed_prec.decode_len = 2
 
-class CommandDecoder(namedtuple('CommandDecoder', 'start_position decode_fn number label')):
+
+# Literal fraction (LSB is the literal fractional part), e.g. 0x123 = 1.0x23 = 1.35, also called f8/8
+# https://github.com/budulinek/Daikin-P1P2---UDP-Gateway/blob/main/Payload-data-read.md#data-types
+def decode_word_literal_frac(data_bytes):
+    """ Extract two bytes from the specified response byte, returns a float. """
+    if len(data_bytes) == 2:
+        return data_bytes[0] + (data_bytes[1] / len(str(data_bytes[1])))
+    else:
+        return None
+
+
+class CommandDecoder(namedtuple('CommandDecoder', 'start_position decode_fn number label', defaults=(None,))):
     """ Define a decoder for one of the registers in the response to a specific command. """
 
     def __hash__(self):
@@ -106,7 +123,42 @@ class CommandDecoder(namedtuple('CommandDecoder', 'start_position decode_fn numb
         return self.start_position + self.decode_fn.decode_len
 
 
-prefix_to_decoders = {
+class P1P2Variable(Enum):
+    """ Our symbolic names for variables (system state) communicated between controllers on the P1/P2 bus. """
+
+    dhw_booster = 'dhw_booster'
+    dhw_heating = 'dhw_heating'
+    heating_enabled = 'heating_enabled'
+    heating_on = 'heating_on'
+    cooling_on = 'cooling_on'
+    main_zone = 'main_zone'
+    additional_zone = 'additional_zone'
+    dhw_tank = 'dhw_tank'
+    threeway_on_off = 'threeway_on_off'
+    threeway_tank = 'threeway_tank'
+    dhw_target_temp = 'dhw_target_temp'
+
+
+p1p2_message_prefix_to_decoders = {
+    (0x00, 0, 0x10): [  # https://github.com/Arnold-n/P1P2Serial/blob/master/doc/Daikin-protocol-EHYHBX08AAV3.md#1-packet-000010
+        CommandDecoder(20, decode_bits[1], P1P2Variable.dhw_booster),
+        CommandDecoder(20, decode_bits[6], P1P2Variable.dhw_heating),
+    ],
+
+    (0x40, 0, 0x10): [  # https://github.com/Arnold-n/P1P2Serial/blob/master/doc/Daikin-protocol-EHYHBX08AAV3.md#2-packet-400010
+        CommandDecoder(3, decode_bits[0], P1P2Variable.heating_enabled),
+        CommandDecoder(5, decode_bits[0], P1P2Variable.heating_on),
+        CommandDecoder(5, decode_bits[1], P1P2Variable.cooling_on),
+        CommandDecoder(5, decode_bits[5], P1P2Variable.main_zone),
+        CommandDecoder(5, decode_bits[6], P1P2Variable.additional_zone),
+        CommandDecoder(5, decode_bits[7], P1P2Variable.dhw_tank),
+        CommandDecoder(6, decode_bits[0], P1P2Variable.threeway_on_off),
+        CommandDecoder(6, decode_bits[4], P1P2Variable.threeway_tank),
+        CommandDecoder(7, decode_word_fixed_prec, P1P2Variable.dhw_target_temp),
+    ],
+}
+
+serial_page_prefix_to_decoders = {
     (3, 64, 0): [
         # 2020/06/01 22:51:45:
         # 19:O/U MPU ID (xx): 4 => 0;
@@ -280,11 +332,14 @@ prefix_to_decoders = {
 }
 
 
-def decode(command, response):
-    """ Decode the response to a command. Returns a dictionary of "variable number" to value. """
+def _decode_string(command, response, prefix_to_decoders):
+    """ Decode a message, by searching for the command's prefix in prefix_to_decoders.
+
+    Returns a dictionary of "variable number" to value.
+    """
     values = {}
 
-    for prefix, decoders in prefix_to_decoders.items():
+    for prefix, decoders in serial_page_prefix_to_decoders.items():
         if tuple(command[:len(prefix)]) == prefix:
             for decoder in decoders:
                 response_part = response[decoder.start_position:decoder.end_position]
@@ -292,3 +347,13 @@ def decode(command, response):
                 values[decoder.number] = (decoder, value)
 
     return values
+
+
+def decode_serial(command, response):
+    """ Decode the response to a serial interface command. Returns a dictionary of "variable number" to value. """
+    return _decode_string(command, response, serial_page_prefix_to_decoders)
+
+
+def decode_p1p2(message):
+    """ Decode a P1/P2 bus message. Returns a dictionary of "variable number" to value. """
+    return _decode_string(message, message, p1p2_message_prefix_to_decoders)

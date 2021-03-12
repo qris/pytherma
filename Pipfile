@@ -14,6 +14,7 @@ flake8-docstrings = "*"
 SQLAlchemy = "*"
 tox = "*"
 pyserial = ">=3.4"
+psycopg2 = ">=2.7"
 
 [requires]
-python_version = "3.8"
+python_version = ">=3.7"
