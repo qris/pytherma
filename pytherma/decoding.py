@@ -110,7 +110,9 @@ def decode_word_literal_frac(data_bytes):
         return None
 
 
-class CommandDecoder(namedtuple('CommandDecoder', 'start_position decode_fn number label', defaults=(None,))):
+# We want the label to default to None, but namedtuple(defaults=...) requires Python 3.7, and we want to
+# support 3.6, so wrap it: https://stackoverflow.com/a/11351850/648162
+class _CommandDecoder(namedtuple('CommandDecoder', 'start_position decode_fn number label')):
     """ Define a decoder for one of the registers in the response to a specific command. """
 
     def __hash__(self):
@@ -121,6 +123,11 @@ class CommandDecoder(namedtuple('CommandDecoder', 'start_position decode_fn numb
     def end_position(self):
         """ Return the end position, computed from the start position and decoder's decode_len. """
         return self.start_position + self.decode_fn.decode_len
+
+
+def CommandDecoder(start_position, decode_fn, number, label=None):
+    """ Construct a CommandDecoder namedtuple, with default argument values. """
+    return _CommandDecoder(start_position, decode_fn, number, label)
 
 
 class P1P2Variable(Enum):
