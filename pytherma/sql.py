@@ -4,11 +4,10 @@ import sqlalchemy
 
 from contextlib import contextmanager
 
-from sqlalchemy import Column, JSON  # Integer, Numeric, Text
+from sqlalchemy import Boolean, Column, JSON, Numeric  # Integer, Text
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-# from sqlalchemy.schema import CreateColumn
 
 
 TIMESTAMPTZ = sqlalchemy.types.TIMESTAMP(timezone=True)
@@ -28,10 +27,10 @@ def compile_json_sqlite(type_, compiler, **kw):
     return "TEXT"
 
 
-class DaikinState(Base):
+class SerialState(Base):
     """ Records the state of a Daikin ASHP at a particular time. """
 
-    __tablename__ = 'daikin_ashp_state'
+    __tablename__ = 'daikin_serial_state'
 
     timestamp = Column(TIMESTAMPTZ, primary_key=True)
     raw_page_contents = Column(JSON)
@@ -40,7 +39,39 @@ class DaikinState(Base):
     def __repr__(self):
         """ Nicer repr. """
         return (
-            f"<{self.__class__.__name__} {self.timestamp} {self.latest_variable_values}>"
+            f"<{self.__class__.__name__} {self.timestamp} {self.variable_values}>"
+        )
+
+
+class P1P2State(Base):
+    """ Records the state of all Daikin P1/P2 bus devices at a particular time. """
+
+    __tablename__ = 'daikin_p1p2_state'
+
+    timestamp = Column(TIMESTAMPTZ, primary_key=True)
+    raw_packets_contents = Column(JSON)
+    dhw_booster = Column(Boolean)
+    dhw_heating = Column(Boolean)
+    lwt_control = Column(Boolean)
+    heating_enabled = Column(Boolean)
+    heating_on = Column(Boolean)
+    cooling_on = Column(Boolean)
+    main_zone = Column(Boolean)
+    additional_zone = Column(Boolean)
+    dhw_tank = Column(Boolean)
+    threeway_on_off = Column(Boolean)
+    threeway_tank = Column(Boolean)
+    target_dhw_temp = Column(Numeric(3, 2))
+    target_room_temp = Column(Numeric(3, 2))
+    quiet_mode = Column(Boolean)
+    compressor_on = Column(Boolean)
+    pump_on = Column(Boolean)
+    dhw_active = Column(Boolean)
+
+    def __repr__(self):
+        """ Nicer repr. """
+        return (
+            f"<{self.__class__.__name__} {self.timestamp}>"
         )
 
 

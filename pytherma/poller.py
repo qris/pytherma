@@ -10,7 +10,7 @@ import pytherma.comms
 import pytherma.decoding
 import pytherma.simulator
 
-from pytherma.sql import Base, DaikinState, session_scope
+from pytherma.sql import Base, SerialState, session_scope
 
 
 def poll_once(daikin_interface, engine):
@@ -19,20 +19,20 @@ def poll_once(daikin_interface, engine):
     Record their raw contents and decoded values in the database.
     """
     with session_scope(engine) as session:
-        daikin_state = DaikinState(timestamp=datetime.datetime.now().astimezone(),
+        serial_state = SerialState(timestamp=datetime.datetime.now().astimezone(),
                                    raw_page_contents={}, variable_values={})
-        session.add(daikin_state)
+        session.add(serial_state)
 
         for prefix in pytherma.decoding.serial_page_prefix_to_decoders:
             command_packet = bytes(prefix) + pytherma.comms.calculate_checksum(prefix)
 
             response_packet = pytherma.comms.execute_command(daikin_interface, command_packet)
-            daikin_state.raw_page_contents[prefix[2]] = list(response_packet[3:-1])
+            serial_state.raw_page_contents[prefix[2]] = list(response_packet[3:-1])
 
             values = pytherma.decoding.decode_serial(command_packet, response_packet)
             # JSON dict keys are always strings, so for the avoidance of doubt, we convert
             # the keys to strings here. https://stackoverflow.com/questions/1450957
-            daikin_state.variable_values.update({
+            serial_state.variable_values.update({
                 str(number): value[1] for number, value in values.items()
             })
 
