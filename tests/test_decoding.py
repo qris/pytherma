@@ -9,6 +9,7 @@ from collections import defaultdict
 from more_itertools import one
 
 from pytherma import comms, decoding
+from pytherma.decoding import P1P2Variable
 
 
 class DecodingTest(unittest.TestCase):
@@ -414,7 +415,7 @@ class DecodingTest(unittest.TestCase):
         This abbreviates calling decoding.decode_serial and making assertions on the resulting mapping.
         """
         dummy_request_frame = bytes([3, 64, page])
-        # We don't bother to make the response the correct (exact) length. We just include sufficient bytes that should satisfy very very long line dolorem
+        # We don't bother to make the response the correct (exact) length. We just include sufficient bytes that should satisfy
         # the decoder (as far as we've been told), and the mandatory checksum after them. If the decoder is not actually satisfied
         # then it will raise an exception.
         fake_length = 1 + offset + len(value_bytes) + 1
@@ -431,3 +432,22 @@ class DecodingTest(unittest.TestCase):
     def test_decodes(self):
         """ Test that some values are decoded properly, using the abbreviated method, assert_decode. """
         self.assert_decode(98, 2, [144], 156, True, "Powerful DHW Operation. ON/OFF")
+
+    def test_decode_p1p2(self):
+        """ Test that decode_p1p2 correctly decodes some example messages. """
+        # import pdb; pdb.set_trace()
+        result = decoding.decode_p1p2(bytearray.fromhex("400010010081013700180015001A000000000000400000"))  # CRC=87
+        self.assertEqual(True, result[P1P2Variable.heating_enabled][1])
+        self.assertEqual(True, result[P1P2Variable.heating_on][1])
+        self.assertEqual(False, result[P1P2Variable.cooling_on][1])
+        self.assertEqual(False, result[P1P2Variable.main_zone][1])
+        self.assertEqual(False, result[P1P2Variable.additional_zone][1])
+        self.assertEqual(True, result[P1P2Variable.dhw_tank][1])
+        self.assertEqual(True, result[P1P2Variable.threeway_on_off][1])
+        self.assertEqual(False, result[P1P2Variable.threeway_tank][1])
+        self.assertEqual(55, result[P1P2Variable.target_dhw_temp][1])
+        self.assertEqual(21, result[P1P2Variable.target_room_temp][1])
+        self.assertEqual(False, result[P1P2Variable.quiet_mode][1])
+        self.assertEqual(False, result[P1P2Variable.compressor_on][1])
+        self.assertEqual(False, result[P1P2Variable.pump_on][1])
+        self.assertEqual(False, result[P1P2Variable.dhw_active][1])
