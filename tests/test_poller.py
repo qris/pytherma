@@ -20,8 +20,8 @@ class PollerTest(unittest.TestCase):
         poller.poll_once(simulator, engine)
 
         with sql.session_scope(engine) as session:
-            self.assertEqual(1, session.query(sql.DaikinState).count())
-            state = session.query(sql.DaikinState).one()
+            self.assertEqual(1, session.query(sql.SerialState).count())
+            state = session.query(sql.SerialState).one()
 
             # The simulator returns a response at random when there's more than one, so choose
             # a value to which the response is always the same:
