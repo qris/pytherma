@@ -78,11 +78,11 @@ decode_byte_10 = partial(decode_byte, 10)
 decode_byte_10.decode_len = 1
 
 
-def decode_word(divisor, data_bytes):
+def decode_word(divisor, data_bytes, big_endian=False):
     """ Extract two bytes from the specified response byte, returns an integer. """
     if len(data_bytes) == 2:
         # return ((data_bytes[1] * 256) + data_bytes[0]) / divisor
-        return one(struct.unpack('<h', data_bytes)) / divisor
+        return one(struct.unpack('>h' if big_endian else '<h', data_bytes)) / divisor
     else:
         return None
 
@@ -96,8 +96,8 @@ decode_word_10.decode_len = 2
 
 # Fixed precision (LSB is the fractional part), e.g. 0x123 = 1 + (23/256) = 1.08984375, also called f8.8
 # https://github.com/budulinek/Daikin-P1P2---UDP-Gateway/blob/main/Payload-data-read.md#data-types
-decode_word_fixed_prec = partial(decode_word, 256)
-decode_word_fixed_prec.decode_len = 2
+decode_word_fixed_prec_be = partial(decode_word, 256, big_endian=True)
+decode_word_fixed_prec_be.decode_len = 2
 
 
 # Literal fraction (LSB is the literal fractional part), e.g. 0x123 = 1.0x23 = 1.35, also called f8/8
@@ -135,6 +135,7 @@ class P1P2Variable(Enum):
 
     dhw_booster = 'dhw_booster'
     dhw_heating = 'dhw_heating'
+    lwt_control = 'lwt_control'
     heating_enabled = 'heating_enabled'
     heating_on = 'heating_on'
     cooling_on = 'cooling_on'
@@ -143,7 +144,12 @@ class P1P2Variable(Enum):
     dhw_tank = 'dhw_tank'
     threeway_on_off = 'threeway_on_off'
     threeway_tank = 'threeway_tank'
-    dhw_target_temp = 'dhw_target_temp'
+    target_dhw_temp = 'target_dhw_temp'
+    target_room_temp = 'target_room_temp'
+    quiet_mode = 'quiet_mode'
+    compressor_on = 'compressor_on'
+    pump_on = 'pump_on'
+    dhw_active = 'dhw_active'
 
 
 p1p2_message_prefix_to_decoders = {
@@ -161,7 +167,12 @@ p1p2_message_prefix_to_decoders = {
         CommandDecoder(5, decode_bits[7], P1P2Variable.dhw_tank),
         CommandDecoder(6, decode_bits[0], P1P2Variable.threeway_on_off),
         CommandDecoder(6, decode_bits[4], P1P2Variable.threeway_tank),
-        CommandDecoder(7, decode_word_fixed_prec, P1P2Variable.dhw_target_temp),
+        CommandDecoder(7, decode_word_fixed_prec_be, P1P2Variable.target_dhw_temp),
+        CommandDecoder(11, decode_word_fixed_prec_be, P1P2Variable.target_room_temp),
+        CommandDecoder(14, decode_bits[2], P1P2Variable.quiet_mode),
+        CommandDecoder(21, decode_bits[0], P1P2Variable.compressor_on),
+        CommandDecoder(21, decode_bits[3], P1P2Variable.pump_on),
+        CommandDecoder(22, decode_bits[1], P1P2Variable.dhw_active),
     ],
 }
 
@@ -346,7 +357,7 @@ def _decode_string(command, response, prefix_to_decoders):
     """
     values = {}
 
-    for prefix, decoders in serial_page_prefix_to_decoders.items():
+    for prefix, decoders in prefix_to_decoders.items():
         if tuple(command[:len(prefix)]) == prefix:
             for decoder in decoders:
                 response_part = response[decoder.start_position:decoder.end_position]
