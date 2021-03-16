@@ -64,7 +64,7 @@ for decode_bits_fn in decode_bits.values():
 
 
 def decode_byte(divisor, data_bytes):
-    """ Extract one byte from the specified response byte, returns an integer. """
+    """ Extract one byte from the specified response byte, returns a float. """
     if len(data_bytes) == 1:
         return data_bytes[0] / divisor
     else:
@@ -79,7 +79,7 @@ decode_byte_10.decode_len = 1
 
 
 def decode_word(divisor, data_bytes, big_endian=False):
-    """ Extract two bytes from the specified response byte, returns an integer. """
+    """ Extract two bytes from the specified response byte, returns a float. """
     if len(data_bytes) == 2:
         # return ((data_bytes[1] * 256) + data_bytes[0]) / divisor
         return one(struct.unpack('>h' if big_endian else '<h', data_bytes)) / divisor
@@ -100,14 +100,43 @@ decode_word_fixed_prec_be = partial(decode_word, 256, big_endian=True)
 decode_word_fixed_prec_be.decode_len = 2
 
 
-# Literal fraction (LSB is the literal fractional part), e.g. 0x123 = 1.0x23 = 1.35, also called f8/8
+# Literal fraction (LSB is the literal fractional part), e.g. 0x103 = 1 + (3 / 10) = 1.3, also called f8/8
 # https://github.com/budulinek/Daikin-P1P2---UDP-Gateway/blob/main/Payload-data-read.md#data-types
 def decode_word_literal_frac(data_bytes):
     """ Extract two bytes from the specified response byte, returns a float. """
     if len(data_bytes) == 2:
-        return data_bytes[0] + (data_bytes[1] / len(str(data_bytes[1])))
+        return data_bytes[0] + (data_bytes[1] / 10)
     else:
         return None
+
+
+decode_word_literal_frac.decode_len = 2
+
+
+def decode_5bit(data_bytes):
+    """ Extract a signed 5-bit value (s-abs4) from a byte. """
+    if len(data_bytes) == 1:
+        return (data_bytes[0] & 0x0F) * (-1 if (data_bytes[0] & 0x10) else 1)
+    else:
+        return None
+
+
+decode_5bit.decode_len = 1
+
+
+def decode_byte_capped(divisor, cap, data_bytes):
+    """ Extract one byte from the specified response byte, returns a float (or None if capped). """
+    if len(data_bytes) == 1:
+        value = data_bytes[0] / divisor
+        return value if value <= cap else None
+    else:
+        return None
+
+
+decode_byte_capped.decode_len = 1
+
+decode_heating_flow_l_min = partial(decode_byte_capped, 10, 0xE0 / 10)
+decode_heating_flow_l_min.decode_len = 1
 
 
 # We want the label to default to None, but namedtuple(defaults=...) requires Python 3.7, and we want to
@@ -150,6 +179,18 @@ class P1P2Variable(Enum):
     compressor_on = 'compressor_on'
     pump_on = 'pump_on'
     dhw_active = 'dhw_active'
+    actual_room_temp = 'actual_room_temp'
+    actual_lwt_temp = 'actual_lwt_temp'
+    actual_dhw_temp = 'actual_dhw_temp'
+    outdoor_temp = 'outdoor_temp'
+    return_water_temp = 'return_water_temp'
+    midway_temp = 'midway_temp'
+    refrigerant_temp = 'refrigerant_temp'
+    outdoor_temp_2 = 'outdoor_temp_2'
+    heating_flow_l_min = 'heating_flow_l_min'
+    delta_t_temp = 'delta_t_temp'
+    target_lwt_main_temp = 'target_lwt_main_temp'
+    target_lwt_add_temp = 'target_lwt_add_temp'
 
 
 p1p2_message_prefix_to_decoders = {
@@ -173,6 +214,31 @@ p1p2_message_prefix_to_decoders = {
         CommandDecoder(21, decode_bits[0], P1P2Variable.compressor_on),
         CommandDecoder(21, decode_bits[3], P1P2Variable.pump_on),
         CommandDecoder(22, decode_bits[1], P1P2Variable.dhw_active),
+    ],
+
+    (0x00, 0, 0x11): [  # https://github.com/qris/P1P2Serial/blob/master/doc/Daikin-protocol-EHYHBX08AAV3.md#3-packet-000011
+        CommandDecoder(3, decode_word_fixed_prec_be, P1P2Variable.actual_room_temp),
+    ],
+
+    (0x40, 0, 0x11): [  # https://github.com/qris/P1P2Serial/blob/master/doc/Daikin-protocol-EHYHBX08AAV3.md#3-packet-000011
+        CommandDecoder(3, decode_word_fixed_prec_be, P1P2Variable.actual_lwt_temp),
+        CommandDecoder(5, decode_word_fixed_prec_be, P1P2Variable.actual_dhw_temp),
+        CommandDecoder(7, decode_word_fixed_prec_be, P1P2Variable.outdoor_temp),
+        CommandDecoder(9, decode_word_fixed_prec_be, P1P2Variable.return_water_temp),
+        CommandDecoder(11, decode_word_fixed_prec_be, P1P2Variable.midway_temp),
+        CommandDecoder(13, decode_word_fixed_prec_be, P1P2Variable.refrigerant_temp),
+        CommandDecoder(15, decode_word_fixed_prec_be, P1P2Variable.actual_room_temp),
+        CommandDecoder(17, decode_word_fixed_prec_be, P1P2Variable.outdoor_temp_2),
+    ],
+
+    (0x40, 0, 0x13): [  # https://github.com/qris/P1P2Serial/blob/master/doc/Daikin-protocol-EHYHBX08AAV3.md#8-packet-400013
+        CommandDecoder(12, decode_heating_flow_l_min, P1P2Variable.heating_flow_l_min),
+    ],
+
+    (0x40, 0, 0x14): [  # https://github.com/qris/P1P2Serial/blob/master/doc/Daikin-protocol-EHYHBX08AAV3.md#10-packet-400014
+        CommandDecoder(11, decode_5bit, P1P2Variable.delta_t_temp),
+        CommandDecoder(18, decode_word_literal_frac, P1P2Variable.target_lwt_main_temp),
+        CommandDecoder(20, decode_word_literal_frac, P1P2Variable.target_lwt_add_temp),
     ],
 }
 

@@ -23,10 +23,13 @@ class DatabaseOutputPlugin:
         """ Initialise the plugin when run for the first time, i.e. create database tables. """
         Base.metadata.create_all(self.engine)
 
-    def handle_parsed_values(self, values):
+    def handle_parsed_values(self, values, raw_record):
         """ Handle some values parsed by decode_p1p2, by collecting them ready to write to the database. """
         if self.record is None:
-            self.record = P1P2State(timestamp=datetime.datetime.now().astimezone())
+            self.record = P1P2State(timestamp=datetime.datetime.now().astimezone(), raw_packets_contents=[])
+
+        self.record.raw_packets_contents.append(raw_record)
+
         for name, (decoder, value) in values.items():
             setattr(self.record, name.value, value)
 
@@ -63,7 +66,7 @@ def parse_line(line, output_plugins):
 
         result = parse_read_bytes(match.group(2), match.group(3))
         for plugin in output_plugins:
-            plugin.handle_parsed_values(result)
+            plugin.handle_parsed_values(result, match.group(2).decode('ascii'))
     elif line.startswith(b'J '):
         # Ignore JSON lines for now
         return

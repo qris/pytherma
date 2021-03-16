@@ -435,7 +435,6 @@ class DecodingTest(unittest.TestCase):
 
     def test_decode_p1p2(self):
         """ Test that decode_p1p2 correctly decodes some example messages. """
-        # import pdb; pdb.set_trace()
         result = decoding.decode_p1p2(bytearray.fromhex("400010010081013700180015001A000000000000400000"))  # CRC=87
         self.assertEqual(True, result[P1P2Variable.heating_enabled][1])
         self.assertEqual(True, result[P1P2Variable.heating_on][1])
@@ -451,3 +450,24 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(False, result[P1P2Variable.compressor_on][1])
         self.assertEqual(False, result[P1P2Variable.pump_on][1])
         self.assertEqual(False, result[P1P2Variable.dhw_active][1])
+
+        result = decoding.decode_p1p2(bytearray.fromhex("0000111718000000000000"))  # CRC=F6
+        self.assertEqual(23 + (24 / 256), result[P1P2Variable.actual_room_temp][1])
+
+        result = decoding.decode_p1p2(bytearray.fromhex("40001118FC30F0080019D41FE818FC1718080100000000"))  # CRC=71
+        self.assertEqual(0x18 + (0xFC / 256), result[P1P2Variable.actual_lwt_temp][1])
+        self.assertEqual(0x30 + (0xF0 / 256), result[P1P2Variable.actual_dhw_temp][1])
+        self.assertEqual(8.0, result[P1P2Variable.outdoor_temp][1])
+        self.assertEqual(0x19 + (0xD4 / 256), result[P1P2Variable.return_water_temp][1])
+        self.assertEqual(0x1F + (0xE8 / 256), result[P1P2Variable.midway_temp][1])
+        self.assertEqual(0x18 + (0xFC / 256), result[P1P2Variable.refrigerant_temp][1])
+        self.assertEqual(0x17 + (0x18 / 256), result[P1P2Variable.actual_room_temp][1])
+        self.assertEqual(0x08 + (0x01 / 256), result[P1P2Variable.outdoor_temp_2][1])
+
+        result = decoding.decode_p1p2(bytearray.fromhex("4000133700035200000000FFFD76F239040000"))  # CRC=C9
+        self.assertEqual(None, result[P1P2Variable.heating_flow_l_min][1])
+
+        result = decoding.decode_p1p2(bytearray.fromhex("40001437001200370007000000000000000022072808"))  # CRC=41
+        self.assertEqual(0, result[P1P2Variable.delta_t_temp][1])
+        self.assertAlmostEqual(0x22 + 0.7, result[P1P2Variable.target_lwt_main_temp][1])
+        self.assertAlmostEqual(0x28 + 0.8, result[P1P2Variable.target_lwt_add_temp][1])
