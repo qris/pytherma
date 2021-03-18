@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+tox = "*"
+
+[requires]
+python_version = "3.7"
+
+[packages.63ed945]
+path = "/home/pi/pytherma"
+editable = true
+
+[packages.e1839a8]
+path = "."
+editable = true

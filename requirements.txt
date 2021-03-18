@@ -1,4 +1,0 @@
-# As pytherma is a library, dependencies are expressed in setup.py:
-# https://pipenv.pypa.io/en/latest/advanced/#pipfile-vs-setup-py
--e .
-tox
