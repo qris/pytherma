@@ -14,10 +14,12 @@ from pytherma.decoding import decode_p1p2
 class DatabaseOutputPlugin:
     """ An output plugin that writes to a SQL database using SQLAlchemy. """
 
-    def __init__(self, database_url):
+    def __init__(self, database_url, interval):
         # 'postgresql+psycopg2://<username>:<password>@localhost/<database>'
         self.engine = sqlalchemy.create_engine(database_url)
+        self.interval = interval
         self.record = None
+        self.next_write_time = datetime.datetime.now().astimezone() + interval
 
     def initialise(self):
         """ Initialise the plugin when run for the first time, i.e. create database tables. """
@@ -26,19 +28,30 @@ class DatabaseOutputPlugin:
     def handle_parsed_values(self, values, raw_record):
         """ Handle some values parsed by decode_p1p2, by collecting them ready to write to the database. """
         if self.record is None:
-            self.record = P1P2State(timestamp=datetime.datetime.now().astimezone(), raw_packets_contents=[])
+            self.record = P1P2State(raw_packets_contents={})
 
-        self.record.raw_packets_contents.append(raw_record)
+        # Store the most recent packet for each prefix in raw_packets_contents:
+        packet_prefix = raw_record[:6]
+        self.record.raw_packets_contents[packet_prefix] = raw_record
 
         for name, (decoder, value) in values.items():
+            if name.value not in P1P2State.__mapper__.attrs:
+                raise AttributeError(f"{name} is not a valid attribute of P1P2State")
+
             setattr(self.record, name.value, value)
 
-    def round_finished(self):
-        """ Write values collected so far to the database, and clear them. """
-        if self.record is not None:
+        time_now = datetime.datetime.now().astimezone()
+        if time_now > self.next_write_time:
+            # Write values collected so far to the database, and clear them.
+            self.record.timestamp = time_now
             with session_scope(self.engine) as session:
                 session.add(self.record)
             self.record = None
+            self.next_write_time += self.interval
+
+    def round_finished(self):
+        """ Finishes off a round of polling. Output plugins can choose what action to take here. """
+        # Right now we ignore this, and keep aggregating (overwriting) values until self.next_write_time.
 
 
 def parse_read_bytes(read_bytes_hex, engine):
@@ -46,7 +59,7 @@ def parse_read_bytes(read_bytes_hex, engine):
     decoded = read_bytes_hex.decode('ascii')
     buf = bytearray.fromhex(decoded)
     parsed_values = decode_p1p2(buf)
-    print(decoded, parsed_values)
+    # print(decoded, parsed_values)
     return parsed_values
 
 
@@ -92,6 +105,8 @@ def main(cmdline_args=None):
                         help="Baud rate for serial port (device) connected to Arduino with P1P2Serial adaptor")
     parser.add_argument('--database',
                         help="SQLAlchemy URL for the database to connect to")
+    parser.add_argument('--interval', type=int, default=10,
+                        help="Interval between database writes (database records)")
     parser.add_argument('--init', action='store_true',
                         help="Initialise plugins (e.g. create database tables if missing)")
 
@@ -101,7 +116,7 @@ def main(cmdline_args=None):
 
     output_plugins = []
     if args.database:
-        output_plugins.append(DatabaseOutputPlugin(args.database))
+        output_plugins.append(DatabaseOutputPlugin(args.database, datetime.timedelta(seconds=args.interval)))
 
     if args.init:
         for plugin in output_plugins:

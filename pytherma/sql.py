@@ -4,7 +4,7 @@ import sqlalchemy
 
 from contextlib import contextmanager
 
-from sqlalchemy import Boolean, Column, JSON, Numeric  # Integer, Text
+from sqlalchemy import Boolean, Column, JSON, Numeric, Integer  # Text
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -52,7 +52,6 @@ class P1P2State(Base):
     raw_packets_contents = Column(JSON)
     dhw_booster = Column(Boolean)
     dhw_heating = Column(Boolean)
-    lwt_control = Column(Boolean)
     heating_enabled = Column(Boolean)
     heating_on = Column(Boolean)
     cooling_on = Column(Boolean)
@@ -61,12 +60,28 @@ class P1P2State(Base):
     dhw_tank = Column(Boolean)
     threeway_on_off = Column(Boolean)
     threeway_tank = Column(Boolean)
-    target_dhw_temp = Column(Numeric(3, 2))
-    target_room_temp = Column(Numeric(3, 2))
     quiet_mode = Column(Boolean)
     compressor_on = Column(Boolean)
     pump_on = Column(Boolean)
     dhw_active = Column(Boolean)
+    quiet_mode = Column(Boolean)
+    compressor_on = Column(Boolean)
+    pump_on = Column(Boolean)
+    dhw_active = Column(Boolean)
+    delta_t_temp = Column(Integer)
+    actual_room_temp = Column(Numeric(4, 2))
+    actual_lwt_temp = Column(Numeric(4, 2))
+    actual_dhw_temp = Column(Numeric(4, 2))
+    outdoor_temp = Column(Numeric(4, 2))
+    return_water_temp = Column(Numeric(4, 2))
+    midway_temp = Column(Numeric(4, 2))
+    refrigerant_temp = Column(Numeric(4, 2))
+    outdoor_temp_2 = Column(Numeric(4, 2))
+    heating_flow_l_min = Column(Numeric(4, 2))
+    target_dhw_temp = Column(Numeric(4, 2))
+    target_room_temp = Column(Numeric(4, 2))
+    target_lwt_main_temp = Column(Numeric(4, 2))
+    target_lwt_add_temp = Column(Numeric(4, 2))
 
     def __repr__(self):
         """ Nicer repr. """
