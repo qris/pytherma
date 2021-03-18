@@ -1,8 +1,4 @@
-flake8==3.7.9
-flake8-docstrings
-more_itertools
-pySerial>=3.4
-pytest
-pytest-flake8
-sqlalchemy
+# As pytherma is a library, dependencies are expressed in setup.py:
+# https://pipenv.pypa.io/en/latest/advanced/#pipfile-vs-setup-py
+-e .
 tox
