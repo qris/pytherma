@@ -1,0 +1,22 @@
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+
+[Unit]
+Description=Daikin P1/P2 Monitor Daemon
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+WorkingDirectory=/home/chris/pytherma
+User=chris
+Type=simple
+ExecStart=/usr/bin/env pipenv run monitor --port /dev/ttyACM0 --database 'postgresql+psycopg2://username:password@server/database'
+Restart=always
+SyslogIdentifier=daikin_p1p2_monitor
+
+[Install]
+WantedBy=default.target
