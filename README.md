@@ -116,8 +116,7 @@ To get a development environment on a Mac using Homebrew:
 	brew install python@3.8 python@3.7 pipenv git
 	ln -s /usr/local/Cellar/python@3.7/3.7.9/bin/python3.7 /usr/local/bin
 	pipenv install
-	pipenv shell
-	tox -e py37,py38,flakes
+	pipenv run tox -s
 
 ### On Windows
 
@@ -129,7 +128,6 @@ To get a development environment on Windows using Anaconda:
 * Install [Pipenv](https://anaconda.org/conda-forge/pipenv) with `conda install -c conda-forge pipenv`
 * Clone the [pyTherma Git repo](https://github.com/qris/pytherma) and enter the directory.
 * Create the virtual environment with `pipenv install`
-* Install pyTherma into the virtual environment with `pipenv install -e .`
 
 To use it:
 

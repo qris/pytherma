@@ -22,7 +22,11 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',  # f-strings
-    setup_requires=[
-        "flake8"
+    # As pytherma is a library, dependencies are expressed here:
+    # https://pipenv.pypa.io/en/latest/advanced/#pipfile-vs-setup-py
+    install_requires=[
+        "more_itertools",
+        "pySerial>=3.4",
+        "sqlalchemy",
     ],
 )
