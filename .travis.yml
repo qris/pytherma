@@ -22,7 +22,9 @@ before_install:
   - sudo apt install software-properties-common
   - sudo add-apt-repository -y ppa:deadsnakes/ppa
   - sudo apt update
-  - sudo apt -y install python3.6 python3.6-dev python3.7 python3.7-dev python3.8 python3.8-dev python3-pip
+  # We need python3.8-distutils to avoid the error "ImportError: cannot import name 'dist'":
+  # https://stackoverflow.com/a/62813917/648162
+  - sudo apt -y install python3.6 python3.6-dev python3.7 python3.7-dev python3.8 python3.8-dev python3-pip python3.8-distutils
   - python3.7 -m pip install pipenv
   - # sudo cat /var/log/apt-cacher-ng/apt-cacher.*
 
