@@ -27,7 +27,8 @@ before_install:
   - # sudo cat /var/log/apt-cacher-ng/apt-cacher.*
 
 script:
-  - python3.7 `which pipenv` install
+  # pipenv is having trouble finding the Python binary:
+  - python3.7 `which pipenv` --python `which python3.7` install
   - python3.7 `which pipenv` run tox
   - # ls -la ~/.cache/pip ~/acng.cache
 
