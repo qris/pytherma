@@ -3,17 +3,27 @@
 Those functions decode response packets into Altherma attribute values.
 """
 
+import os
 import unittest
 
 from collections import defaultdict
 from more_itertools import one
 
-from pytherma import comms, decoding
-from pytherma.decoding import P1P2Variable
+from pytherma import comms, decoding, espaltherma
+from pytherma.decoding import P1P2Variable, decode_using_table
+from pytherma.espaltherma import DEFINITION_FILES, parse_espaltherma_definition
 
 
 class DecodingTest(unittest.TestCase):
     """ Tests decoding of packets into Altherma attribute values. """
+
+    @classmethod
+    def setUpClass(cls):
+        """ Test setup. Parse and store ESPAltherma definitions used by tests. """
+        definitions_file = os.path.join(DEFINITION_FILES, 'ALTHERMA(LT_CA_CB_04-08KW).h')
+        with open(definitions_file) as f:
+            definition_text = f.read()
+        cls.espaltherma_decoding_table = parse_espaltherma_definition(definition_text, output_text=False)
 
     def test_decode_page_0(self):
         """ Tests that the contents of page 0 are decoded correctly, using raw captured packets. """
@@ -40,6 +50,13 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(57, values[20][1], "20:O/U MPU ID (yy)")
         self.assertEqual(6.0, values[21][1], "21:O/U capacity (kW)")
 
+        # Now try the same using ESPAltherma definitions
+        values = decode_using_table(
+            bytes([3, 64, 0, 188]),
+            bytes([64, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 176]),
+            self.espaltherma_decoding_table)
+        self.assertEqual(0.0, values['00.12.105'][1], "21:O/U capacity (kW)")
+
     def test_decode_page_16(self):
         """ Tests that the contents of page 16 are decoded correctly, using raw captured packets. """
         # 27304,27315 22:49:35.0694571 [(3, 0, 1), (19, 87, 86)]
@@ -54,6 +71,13 @@ class DecodingTest(unittest.TestCase):
             bytes([3, 64, 16, 172]),
             bytes([64, 16, 18, 0, 0, 0, 0, 0, 0, 67, 3, 0, 0, 0, 0, 0, 0, 0, 0, 87]))
         self.assertEqual(False, values[22][1], "Wrong decode for 22:Operation Mode (Heating)")
+
+        # Now try the same using ESPAltherma definitions
+        values = decode_using_table(
+            bytes([3, 64, 16, 172]),
+            bytes([64, 16, 18, 1, 0, 0, 0, 0, 0, 67, 3, 0, 0, 0, 0, 0, 0, 0, 0, 86]),
+            self.espaltherma_decoding_table)
+        self.assertEqual(espaltherma.OperationMode.heating, values['10.0.217'][1], "Wrong decode for 22:Operation Mode (Heating)")
 
     def test_decode_page_17(self):
         """ Tests that the contents of page 17 are decoded correctly, using raw captured packets. """
@@ -127,6 +151,15 @@ class DecodingTest(unittest.TestCase):
         self.assertEqual(16.5, values[54][1], "Wrong decode for 54:Outdoor air temp.(R1T)(C)")
         self.assertEqual(15.0, values[58][1], "Wrong decode for 58:Heat exchanger mid-temp.(C)")
         self.assertEqual(11.7, values[61][1], "Wrong decode for 61:Pressure(kgcm2)")
+
+        # Now try the same using ESPAltherma definitions
+        values = decode_using_table(
+            bytes([3, 64, 32, 156]),
+            bytes([64, 32, 19, 165, 0, 0, 0, 74, 1, 0, 0, 150, 0, 0, 0, 200, 0, 117, 0, 1, 200]),
+            self.espaltherma_decoding_table)
+        self.assertEqual(16.5, values['20.0.105'][1], "Wrong decode for 54:Outdoor air temp.(R1T)(C)")
+        self.assertEqual(15.0, values['20.8.105'][1], "Wrong decode for 58:Heat exchanger mid-temp.(C)")
+        self.assertEqual(11.7, values['20.14.105'][1], "Wrong decode for 61:Pressure(kgcm2)")
 
     def test_decode_page_33(self):
         """ Tests that the contents of page 33 are decoded correctly, using raw captured packets. """

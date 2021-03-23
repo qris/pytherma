@@ -1,8 +1,66 @@
 """ Convert ESPAltherma definition files to our CommandDecoder structures. """
 
+import os
 import re
 
+from enum import Enum
 from pytherma import decoding
+
+DEFINITION_FILES = os.path.join(os.path.dirname(__file__), '..', 'data')
+
+
+class OperationMode(Enum):
+    """ Possible values for Operation Mode variable. """
+
+    fan_only = "Fan Only"
+    heating = "Heating"
+    cooling = "Cooling"
+    auto = "Auto"
+    ventilation = "Ventilation"
+    auto_cool = "Auto Cool"
+    auto_heat = "Auto Heat"
+    dry = "Dry"
+    aux = "Aux."
+    cooling_storage = "Cooling Storage"
+    heating_storage = "Heating Storage"
+    use_stored_cool_1 = "UseStrdThrm(cl)1"
+    use_stored_cool_2 = "UseStrdThrm(cl)2"
+    use_stored_cool_3 = "UseStrdThrm(cl)3"
+    use_stored_cool_4 = "UseStrdThrm(cl)4"
+    use_stored_heat_1 = "UseStrdThrm(ht)1"
+    use_stored_heat_2 = "UseStrdThrm(ht)2"
+    use_stored_heat_3 = "UseStrdThrm(ht)3"
+    use_stored_heat_4 = "UseStrdThrm(ht)4"
+
+    @classmethod
+    def value_lookup_table(cls):
+        """ Return the possible values, in integer lookup order. """
+        return [cls.fan_only, cls.heating, cls.cooling, cls.auto, cls.ventilation, cls.auto_cool,
+                cls.auto_heat, cls.dry, cls.aux, cls.cooling_storage, cls.heating_storage,
+                cls.use_stored_cool_1, cls.use_stored_cool_2, cls.use_stored_cool_3,
+                cls.use_stored_cool_4, cls.use_stored_heat_1, cls.use_stored_heat_2,
+                cls.use_stored_heat_3, cls.use_stored_heat_4]
+
+    @classmethod
+    def from_int(cls, value):
+        """ Return the enum instance corresponding to the supplied value, which must be an integer. """
+        return cls.value_lookup_table()[int(value)]
+
+    def to_int(self):
+        """ Return the integer corresponding to this instance. """
+        return self.value_lookup_table().index(self)
+
+
+def _processed_value(name, raw_decoder, post_processor):
+    def processor(data_bytes):
+        raw_value = raw_decoder(data_bytes)
+        return post_processor(raw_value)
+    processor.__name__ = name
+    processor.decode_len = raw_decoder.decode_len
+    return processor
+
+
+decode_operation_mode = _processed_value('decode_operation_mode', decoding.decode_byte_1, OperationMode.from_int)
 
 
 def parse_espaltherma_definition(definition_text, output_text):
@@ -26,6 +84,9 @@ def parse_espaltherma_definition(definition_text, output_text):
             else:
                 prefix_to_decoders[prefix] = decoders = []
 
+            # We include the response sender address byte, page number and length (3 bytes) in the
+            # response for purposes of offset calculation, but ESPAltherma does not, so we need to
+            # add 3 to their offset to get ours:
             offset = int(match.group('offset')) + 3
             convid = int(match.group('convid'))
             length = int(match.group('dataSize'))
@@ -143,7 +204,7 @@ def parse_espaltherma_definition(definition_text, output_text):
             elif convid in (201, 217):
                 # byte -> ["Fan Only","Heating","Cooling",...][i]
                 assert length == 1
-                converter = 'decode_byte_1'  # just return a number for now
+                converter = decode_operation_mode
             elif convid == 203:
                 # byte -> ["Normal", "Error", "Warning", "Caution"][i]
                 assert length == 1
@@ -168,6 +229,9 @@ def parse_espaltherma_definition(definition_text, output_text):
                 # byte -> ["H/P only","Hybrid","Boiler only"][i >> 4]
                 assert length == 1
                 converter = None  # not supported yet
+            elif convid in (214, 215, 219, 310, 311, 405, 801, 995, 996, 998):
+                # unknown, not implemented in espaltherma
+                converter = None  # not supported yet
             else:
                 raise ValueError(f"Unsupported conversion {convid} in {line!r}")
 
@@ -178,7 +242,7 @@ def parse_espaltherma_definition(definition_text, output_text):
 
             # The ESPaltherma files don't tell us what ID is assigned to the variable in D-Checker,
             # but we need some kind of unique identifier, so make one up:
-            synthetic_id = f"{registry_id}.{espaltherma_offset}.{convid}"
+            synthetic_id = f"{registry_id:02x}.{espaltherma_offset}.{convid}"
 
             if output_text:
                 if not isinstance(converter, str):

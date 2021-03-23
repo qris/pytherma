@@ -416,7 +416,7 @@ serial_page_prefix_to_decoders = {
 }
 
 
-def _decode_string(command, response, prefix_to_decoders):
+def decode_using_table(command, response, prefix_to_decoders):
     """ Decode a message, by searching for the command's prefix in prefix_to_decoders.
 
     Returns a dictionary of "variable number" to value.
@@ -435,9 +435,9 @@ def _decode_string(command, response, prefix_to_decoders):
 
 def decode_serial(command, response):
     """ Decode the response to a serial interface command. Returns a dictionary of "variable number" to value. """
-    return _decode_string(command, response, serial_page_prefix_to_decoders)
+    return decode_using_table(command, response, serial_page_prefix_to_decoders)
 
 
 def decode_p1p2(message):
     """ Decode a P1/P2 bus message. Returns a dictionary of "variable number" to value. """
-    return _decode_string(message, message, p1p2_message_prefix_to_decoders)
+    return decode_using_table(message, message, p1p2_message_prefix_to_decoders)

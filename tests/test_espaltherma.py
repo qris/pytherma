@@ -5,7 +5,7 @@ Those functions convert ESPAltherma definition files to our CommandDecoder struc
 
 import unittest
 
-from pytherma import decoding
+from pytherma import decoding, espaltherma
 from pytherma.decoding import CommandDecoder
 from pytherma.espaltherma import parse_espaltherma_definition
 
@@ -28,11 +28,11 @@ class ESPAlthermaTest(unittest.TestCase):
             {
                 (3, 64, 0): [
                     # convid 152 is not supported yet, so skipped
-                    "CommandDecoder(15, decode_byte_10, '0.12.105', 'O/U capacity (kW)')",
+                    "CommandDecoder(15, decode_byte_10, '00.12.105', 'O/U capacity (kW)')",
                 ],
                 (3, 64, 16): [
-                    "CommandDecoder(3, decode_byte_1, '16.0.217', 'Operation Mode')",
-                    "CommandDecoder(4, decode_bits[7], '16.1.307', 'Thermostat ON/OFF')",
+                    "CommandDecoder(3, decode_operation_mode, '10.0.217', 'Operation Mode')",
+                    "CommandDecoder(4, decode_bits[7], '10.1.307', 'Thermostat ON/OFF')",
                 ],
             }, result
         )
@@ -49,11 +49,11 @@ class ESPAlthermaTest(unittest.TestCase):
             {
                 (3, 64, 0): [
                     # convid 152 is not supported yet, so skipped
-                    CommandDecoder(15, decoding.decode_byte_10, '0.12.105', 'O/U capacity (kW)'),
+                    CommandDecoder(15, decoding.decode_byte_10, '00.12.105', 'O/U capacity (kW)'),
                 ],
                 (3, 64, 16): [
-                    CommandDecoder(3, decoding.decode_byte_1, '16.0.217', 'Operation Mode'),
-                    CommandDecoder(4, decoding.decode_bits[7], '16.1.307', 'Thermostat ON/OFF'),
+                    CommandDecoder(3, espaltherma.decode_operation_mode, '10.0.217', 'Operation Mode'),
+                    CommandDecoder(4, decoding.decode_bits[7], '10.1.307', 'Thermostat ON/OFF'),
                 ],
             }, result
         )
