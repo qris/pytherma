@@ -270,11 +270,11 @@ serial_page_prefix_to_decoders = {
     (3, 64, 17): [
         # 2020/06/01 22:51:45:
         # 47:O/U EEPROM (1st digit): 2 => 0
-        # 48:O/U EEPROM (3rd 4th digit): 31 => 0
-        # 49:O/U EEPROM (5th 6th digit): 95 => 0
-        # 50:O/U EEPROM (7th 8th digit): 1 => 0
-        # 51:O/U EEPROM (10th digit): 2 => 0
-        # 52:O/U EEPROM (11th digit): E => ''
+        # 48:O/U EEPROM (3rd 4th digit): 0x31 => 0
+        # 49:O/U EEPROM (5th 6th digit): 0x95 => 0
+        # 50:O/U EEPROM (7th 8th digit): 0x01 => 0
+        # 51:O/U EEPROM (10th digit): 0x02 => 0
+        # 52:O/U EEPROM (11th digit): 0x05 => 0 "E"
         # Assumed to be BCD encoded in (seems likely):
         # 43166,43177 22:51:45.1314069 [(3, 2, 0), (4, 49, 0), (5, 149, 0), (6, 1, 0), (7, 2, 0), (8, 5, 0)]
         # [[3, 64, 17, 171], [64, 17, 8, 0, 0, 0, 0, 0, 0, 166]]
