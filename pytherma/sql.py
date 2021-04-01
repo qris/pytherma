@@ -65,6 +65,7 @@ class P1P2State(Base):
     pump_on = Column(Boolean)
     dhw_active = Column(Boolean)
     quiet_mode = Column(Boolean)
+    operation_mode = Column(Integer)
     compressor_on = Column(Boolean)
     pump_on = Column(Boolean)
     dhw_active = Column(Boolean)

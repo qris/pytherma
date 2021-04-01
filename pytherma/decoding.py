@@ -176,6 +176,7 @@ class P1P2Variable(Enum):
     target_dhw_temp = 'target_dhw_temp'
     target_room_temp = 'target_room_temp'
     quiet_mode = 'quiet_mode'
+    operation_mode = 'operation_mode'
     compressor_on = 'compressor_on'
     pump_on = 'pump_on'
     dhw_active = 'dhw_active'
@@ -211,6 +212,7 @@ p1p2_message_prefix_to_decoders = {
         CommandDecoder(7, decode_word_fixed_prec_be, P1P2Variable.target_dhw_temp),
         CommandDecoder(11, decode_word_fixed_prec_be, P1P2Variable.target_room_temp),
         CommandDecoder(14, decode_bits[2], P1P2Variable.quiet_mode),
+        CommandDecoder(17, decode_byte_1, P1P2Variable.operation_mode),
         CommandDecoder(21, decode_bits[0], P1P2Variable.compressor_on),
         CommandDecoder(21, decode_bits[3], P1P2Variable.pump_on),
         CommandDecoder(22, decode_bits[1], P1P2Variable.dhw_active),
