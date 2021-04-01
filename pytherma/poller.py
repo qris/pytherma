@@ -3,9 +3,12 @@
 import argparse
 import datetime
 import sqlalchemy
+import sys
 import time
 
 from enum import Enum
+
+import serial
 
 import pytherma
 import pytherma.comms
@@ -50,9 +53,58 @@ def poll_once(daikin_interface, decoding_table, engine):
 
 def main_loop(daikin_interface, decoding_table, engine, poll_interval):
     """ Poll Daikin ASHP repeatedly at fixed intervals until stopped. """
+    daikin_interface.write(b'$$$')
+    response = daikin_interface.read(2)
+    assert response == b'\x15\xea', "Unexpected response from Daikin unit: {response}"
+
     while True:
         time.sleep(poll_interval)
         poll_once(daikin_interface, decoding_table, engine)
+
+
+class TimeoutError(Exception):
+    """ Raised when the Daikin does not reply to a command in time. """
+
+
+class SerialDevice:
+    """ Wraps a serial.Serial with a slightly nicer API, also the same as that of DaikinSimulator. """
+
+    def __init__(self, device, verbose):
+        self.device = device
+        self.verbose = verbose
+
+    def write(self, command):
+        """ Write a  command. """
+        assert isinstance(command, bytes)
+        if self.verbose:
+            if sys.version_info >= (3, 8):
+                print(f"{datetime.datetime.now().time()} D<-C {command.hex(' ')}")
+            else:
+                hex_str = ' '.join(bytes([b]).hex() for b in command)
+                print(f"{datetime.datetime.now().time()} D<-C {hex_str}")
+        self.device.write(command)
+
+    def can_read(self):
+        """ Return whether (or not) there is data in the response buffer, waiting to be read. """
+        return self.device.in_waiting > 0
+
+    def read(self, length=1):
+        """ Read some bytes from the device.
+
+        This will block for 1 second, which should be way longer than we expect to wait for a reply, and then raise
+        a TimeoutError.
+        """
+        self.device.timeout = 1
+        response = self.device.read(length)
+        if len(response) < length:
+            raise TimeoutError("Timed out waiting for a response from the Daikin")
+        if self.verbose:
+            if sys.version_info >= (3, 8):
+                print(f"{datetime.datetime.now().time()} D->C {response.hex(' ')}")
+            else:
+                hex_str = ' '.join(bytes([b]).hex() for b in response)
+                print(f"{datetime.datetime.now().time()} D->C {hex_str}")
+        return response
 
 
 def main(cmdline_args=None):
@@ -70,6 +122,12 @@ def main(cmdline_args=None):
                               "for updated values, and between database writes"))
     parser.add_argument('--simulator', action='store_true',
                         help="Read values from the simulator instead of a real Altherma unit")
+    parser.add_argument('--port',
+                        help="Serial port (device) connected to D-Checker serial adaptor")
+    parser.add_argument('--speed', required=False, default=9600,
+                        help="Baud rate for serial port (device) connected to D-Checker serial adaptor")
+    parser.add_argument('--debug', action='store_true',
+                        help="Print packets sent and received")
 
     args = parser.parse_args(cmdline_args)
 
@@ -85,7 +143,12 @@ def main(cmdline_args=None):
     if args.create:
         Base.metadata.create_all(engine)
 
-    assert args.simulator, "Real comms are not supported yet, only the Simulator"
-    daikin_interface = pytherma.simulator.DaikinSimulator()
+    assert bool(args.port) ^ args.simulator, "You must use either --port or --simulator, but not both"
+
+    if args.simulator:
+        daikin_interface = pytherma.simulator.DaikinSimulator()
+    else:
+        raw_serial = serial.Serial(args.port, args.speed, parity=serial.PARITY_NONE)
+        daikin_interface = SerialDevice(raw_serial, args.debug)
 
     main_loop(daikin_interface, decoding_table, engine, args.interval)
