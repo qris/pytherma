@@ -16,6 +16,7 @@ import pytherma.simulator
 
 from pytherma import decoding
 from pytherma.sql import Base, SerialState, session_scope
+from pytherma.espaltherma import parse_espaltherma_definition
 
 
 def _adapt_value_to_json(value):
@@ -53,9 +54,20 @@ def poll_once(daikin_interface, decoding_table, engine):
 
 def main_loop(daikin_interface, decoding_table, engine, poll_interval):
     """ Poll Daikin ASHP repeatedly at fixed intervals until stopped. """
-    daikin_interface.write(b'$$$')
-    response = daikin_interface.read(2)
-    assert response == b'\x15\xea', "Unexpected response from Daikin unit: {response}"
+    if False:
+        daikin_interface.write(b'$$$')
+        try:
+            response = daikin_interface.read(2)
+        except TimeoutError:
+            # Try once more
+            daikin_interface.write(b'$$$')
+            response = daikin_interface.read(2)
+
+        assert response == b'\x15\xea', f"Unexpected response from Daikin unit: {response}"
+
+        daikin_interface.write(bytes.fromhex('02 4E AF 30 30 30 30 BD 03'))
+        response = daikin_interface.read(2)
+        assert response == b'\xfe', f"Unexpected response from Daikin unit: {response}"
 
     while True:
         time.sleep(poll_interval)
@@ -134,7 +146,7 @@ def main(cmdline_args=None):
     if args.definitions_file is not None:
         with open(args.definitions_file) as f:
             definitions_text = f.read()
-        decoding_table = decoding.parse_espaltherma_definition(definitions_text, output_text=False)
+        decoding_table = parse_espaltherma_definition(definitions_text, output_text=False)
     else:
         decoding_table = decoding.serial_page_prefix_to_decoders
 
@@ -148,7 +160,7 @@ def main(cmdline_args=None):
     if args.simulator:
         daikin_interface = pytherma.simulator.DaikinSimulator()
     else:
-        raw_serial = serial.Serial(args.port, args.speed, parity=serial.PARITY_NONE)
+        raw_serial = serial.Serial(args.port, args.speed, parity=serial.PARITY_EVEN)
         daikin_interface = SerialDevice(raw_serial, args.debug)
 
     main_loop(daikin_interface, decoding_table, engine, args.interval)
