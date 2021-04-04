@@ -83,8 +83,12 @@ def parse_line(line, output_plugins):
     elif line.startswith(b'J '):
         # Ignore JSON lines for now
         return
+    elif line.startswith(b'* ') or line == b'*\r\n':
+        # Log all comment lines for now
+        line = line.decode('ascii').replace('\r\n', '')
+        logging.info(f"Received comment from Arduino: {line}")
     else:
-        logging.info("Ignoring unknown message type: {line}")
+        logging.info(f"Ignoring unknown message type: {line}")
 
     # with session_scope(engine) as session:
 
@@ -93,6 +97,8 @@ def main_loop(serial_port, output_plugins):
     """ Monitor the Daikin P1/P2 bus indefinitely, recording ASHP state in the database. """
     while True:
         line = serial_port.readline()
+        if line == '':
+            raise ValueError("No data observed on bus within the timeout, aborting")
         parse_line(line, output_plugins)
 
 
@@ -109,10 +115,15 @@ def main(cmdline_args=None):
                         help="Interval between database writes (database records)")
     parser.add_argument('--init', action='store_true',
                         help="Initialise plugins (e.g. create database tables if missing)")
+    parser.add_argument('--verbose', action='store_true',
+                        help="Show debugging information while running")
 
     args = parser.parse_args(cmdline_args)
 
-    serial_port = serial.Serial(args.port, args.speed)
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)
+
+    serial_port = serial.Serial(args.port, args.speed, timeout=60)
 
     output_plugins = []
     if args.database:
