@@ -27,7 +27,7 @@ class ESPAlthermaTest(unittest.TestCase):
         self.assertEqual(
             {
                 (3, 64, 0): [
-                    # convid 152 is not supported yet, so skipped
+                    "CommandDecoder(14, decode_byte_1, '00.11.152', 'O/U MPU ID (yy)')",
                     "CommandDecoder(15, decode_byte_10, '00.12.105', 'O/U capacity (kW)')",
                 ],
                 (3, 64, 16): [
@@ -48,7 +48,7 @@ class ESPAlthermaTest(unittest.TestCase):
         self.assertEqual(
             {
                 (3, 64, 0): [
-                    # convid 152 is not supported yet, so skipped
+                    CommandDecoder(14, decoding.decode_byte_1, '00.11.152', 'O/U MPU ID (yy)'),
                     CommandDecoder(15, decoding.decode_byte_10, '00.12.105', 'O/U capacity (kW)'),
                 ],
                 (3, 64, 16): [

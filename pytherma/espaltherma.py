@@ -51,6 +51,33 @@ class OperationMode(Enum):
         return self.value_lookup_table().index(self)
 
 
+class IUOperationMode(Enum):
+    """ Possible values for I/U Operation Mode variable. """
+
+    stop = "Stop"
+    heating = "Heating"
+    cooling = "Cooling"
+    unknown = "??"
+    dhw = "DHW"
+    heating_dhw = "Heating + DHW"
+    cooling_dhw = "Cooling + DHW"
+
+    @classmethod
+    def value_lookup_table(cls):
+        """ Return the possible values, in integer lookup order. """
+        return [cls.stop, cls.heating, cls.cooling, cls.unknown, cls.dhw, cls.heating_dhw,
+                cls.cooling_dhw]
+
+    @classmethod
+    def from_int(cls, value):
+        """ Return the enum instance corresponding to the supplied value, which must be an integer. """
+        return cls.value_lookup_table()[int(value) >> 4]
+
+    def to_int(self):
+        """ Return the integer corresponding to this instance. """
+        return self.value_lookup_table().index(self) << 4
+
+
 def _processed_value(name, raw_decoder, post_processor):
     def processor(data_bytes):
         raw_value = raw_decoder(data_bytes)
@@ -61,6 +88,8 @@ def _processed_value(name, raw_decoder, post_processor):
 
 
 decode_operation_mode = _processed_value('decode_operation_mode', decoding.decode_byte_1, OperationMode.from_int)
+decode_iu_operation_mode = _processed_value('decode_iu_operation_mode', decoding.decode_byte_1, IUOperationMode.from_int)
+decode_211 = _processed_value('decode_211', decoding.decode_byte_1, lambda value: None if value == 0 else value)
 
 
 def parse_espaltherma_definition(definition_text, output_text):
@@ -170,11 +199,12 @@ def parse_espaltherma_definition(definition_text, output_text):
                 assert length == 2
                 converter = None  # not supported yet
             elif convid == 151:
-                # little endian byte or word -> unsigned int
-                converter = None  # not supported yet
+                # byte or little endian word -> unsigned int
+                converter = 'decode_byte_1' if length == 1 else 'decode_word_1'
             elif convid == 152:
-                # big endian byte or word -> unsigned int
-                converter = None  # not supported yet
+                # byte or big endian word -> unsigned int
+                assert length in (1, 2)
+                converter = 'decode_byte_1' if length == 1 else 'decode_word_1_be'
             elif convid == 153:
                 # little endian word -> unsigned float with 8 bits decimal (i.e. /256)
                 converter = None  # not supported yet
@@ -216,7 +246,7 @@ def parse_espaltherma_definition(definition_text, output_text):
             elif convid == 211:
                 # byte -> integer where 0 = "OFF"
                 assert length == 1
-                converter = None  # not supported yet
+                converter = decode_211
             elif convid >= 300 and convid <= 307:
                 # bit -> boolean, 300 = bit 0, 307 = bit 7
                 assert length == 1
@@ -224,7 +254,7 @@ def parse_espaltherma_definition(definition_text, output_text):
             elif convid == 315:
                 # byte -> ["Stop","Heating","Cooling","??","DHW:Domestic Hot Water"...][i >> 4]
                 assert length == 1
-                converter = None  # not supported yet
+                converter = decode_iu_operation_mode
             elif convid == 316:
                 # byte -> ["H/P only","Hybrid","Boiler only"][i >> 4]
                 assert length == 1

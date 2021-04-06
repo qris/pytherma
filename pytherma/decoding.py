@@ -90,6 +90,9 @@ def decode_word(divisor, data_bytes, big_endian=False):
 decode_word_1 = partial(decode_word, 1)
 decode_word_1.decode_len = 2
 
+decode_word_1_be = partial(decode_word, 1, big_endian=True)
+decode_word_1_be.decode_len = 2
+
 # Fixed point with 1dp, e.g. 0x123 = 291 => 29.1
 decode_word_10 = partial(decode_word, 10)
 decode_word_10.decode_len = 2
