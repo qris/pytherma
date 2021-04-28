@@ -103,7 +103,7 @@ def main_loop(serial_port, output_plugins):
 
 
 def main(cmdline_args=None):
-    """ Run the P1/P2 monitor as a command-line application. """
+    """ Run the P1/P2 monitor as a command-line application. Called by bin/monitor.py. """
     parser = argparse.ArgumentParser(description=("Monitor the Daikin P1/P2 bus and record ASHP state in the database."))
     parser.add_argument('--port', required=True,
                         help="Serial port (device) connected to Arduino with P1P2Serial adaptor")

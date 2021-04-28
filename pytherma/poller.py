@@ -120,7 +120,7 @@ class SerialDevice:
 
 
 def main(cmdline_args=None):
-    """ Run the poller as a command-line application. """
+    """ Run the poller as a command-line application. Called by bin/poller.py. """
     parser = argparse.ArgumentParser(description=("Poll a Daikin Altherma ASHP using serial "
                                                   "commands, and write to a database."))
     parser.add_argument('--database', required=True,

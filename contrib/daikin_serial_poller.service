@@ -11,10 +11,16 @@ After=network-online.target
 Requires=network-online.target
 
 [Service]
+# You will need to update the WorkingDirectory to match your installation
+# directory, and User to be a user with access to that directory:
 WorkingDirectory=/home/chris/pytherma
 User=chris
 Type=simple
+
+# You will need to provide your database name and type, username and password in the --database
+# URL below (see https://docs.sqlalchemy.org/en/14/core/engines.html for details):
 ExecStart=/usr/bin/env pipenv run poller --port /dev/ttyUSB0 --database 'postgresql+psycopg2://username:password@server/database'
+
 Restart=always
 SyslogIdentifier=daikin_serial_poller
 
