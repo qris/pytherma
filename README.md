@@ -343,11 +343,17 @@ Lint errors before the tests do. Unfortunately this needs to be installed global
 
 ## Related Projects
 
-Mainly for controlling other kinds of Daikin devices using different protocols and interfaces:
+These are directly relevant, as we build on their work by using their
+hardware, software or definitions:
+
+* [P1P2Serial](https://github.com/Arnold-n/P1P2Serial/tree/master/doc)
+* [ESPAltherma](https://github.com/raomin/ESPAltherma)
+
+These are mainly for controlling other kinds of Daikin devices using different
+protocols and interfaces:
 
 * [PyDaikin](https://bitbucket.org/mustang51/pydaikin/src/master/) (BRP069A/Bxx, BRP072A/B/Cxx,
   BRP15B61 aka. AirBase, SKYFi).
 * [DaikinControl](https://github.com/ael-code/daikin-control) (archived, not maintained,
   Daikin Emura/Caldo).
 * [Daikin BRP069](https://bitbucket.org/mustang51/pydaikin/src/master/pydaikin/daikin_brp069.py)
-* [P1P2Serial](https://github.com/Arnold-n/P1P2Serial/tree/master/doc)
