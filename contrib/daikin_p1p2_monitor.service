@@ -14,7 +14,7 @@ Requires=network-online.target
 WorkingDirectory=/home/chris/pytherma
 User=chris
 Type=simple
-ExecStart=/usr/bin/env pipenv run monitor --port /dev/ttyACM0 --database 'postgresql+psycopg2://username:password@server/database' --verbose
+ExecStart=/usr/bin/env pipenv run monitor --port /dev/ttyACM0 --database 'postgresql+psycopg2://username:password@server/database'
 Restart=always
 SyslogIdentifier=daikin_p1p2_monitor
 
