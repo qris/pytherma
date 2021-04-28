@@ -307,7 +307,7 @@ examples of how to use the included classes. A very basic usage example is:
     engine = sqlalchemy.create_engine(database_url)
     Base.metadata.create_all(engine)
 
-    raw_serial = serial.Serial(args.port, args.speed, parity=serial.PARITY_EVEN)
+    raw_serial = serial.Serial('COM3', 9600, parity=serial.PARITY_EVEN)
     daikin_interface = SerialDevice(raw_serial)
     poll_once(daikin_interface, decoding_table, engine)
 
