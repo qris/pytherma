@@ -248,6 +248,14 @@ p1p2_message_prefix_to_decoders = {
 }
 
 serial_page_prefix_to_decoders = {
+    # Keys are the command sent to the Daikin unit, e.g. (3, 64, 0) is probably "read page 0"
+    # Values are CommandDecoder(start_position, decode_fn, number, label=None), where start_position
+    # is the offset into the response packet (passed to the decode_fn) and number is a DChecker
+    # "variable number", under which the value is saved in the database, in the
+    # SerialState.variable_values JSON field. The first 3 bytes of the response always appear to
+    # be (64, page number, response length), so a start_position of 3 is actually the first data
+    # value (0 in the second field of the Registry value on the ESPAltherma Wiki). The raw_page_contents
+    # field is saved *without* these three header bytes!
     (3, 64, 0): [
         # 2020/06/01 22:51:45:
         # 19:O/U MPU ID (xx): 4 => 0;
