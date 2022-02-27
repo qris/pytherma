@@ -30,7 +30,8 @@ def compile_json_sqlite(type_, compiler, **kw):
 class SerialState(Base):
     """ Records the state of a Daikin ASHP at a particular time. """
 
-    __tablename__ = 'daikin_serial_state'
+    __tablename__ = 'state_partitioned'
+    __table_args__ = {'schema': 'serial'}
 
     timestamp = Column(TIMESTAMPTZ, primary_key=True)
     raw_page_contents = Column(JSON)
