@@ -109,13 +109,21 @@ Currently you are expected to be a Python developer. You should also create a
 virtual environment so that you can run the tests using `tox`, on as many
 Python versions as you can get.
 
-### On a Mac
+### On Linux/Mac
 
 To get a development environment on a Mac using Homebrew:
 
 	brew install python@3.8 python@3.7 pipenv git
 	ln -s /usr/local/Cellar/python@3.7/3.7.9/bin/python3.7 /usr/local/bin
 	pipenv install
+	pipenv run tox -s
+
+On Linux, you will need to install Python 3, pipenv, and the Postgres libraries
+for development (for [reasons described
+here](https://www.psycopg.org/docs/install.html)). For example, on Debian-based systems:
+
+	sudo apt install pipenv git libpq-dev
+	pipenv install [--python `which python3`]
 	pipenv run tox -s
 
 ### On Windows

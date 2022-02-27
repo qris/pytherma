@@ -14,6 +14,8 @@ flake8-docstrings = "*"
 python_version = ">= 3.7"
 
 [packages]
+# Using psycopg2 rather than psycopg2-binary (which would be easier to install)
+# for reasons stated here: https://www.psycopg.org/docs/install.html
 psycopg2 = "*"
 pyserial = "*"
 
