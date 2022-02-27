@@ -87,6 +87,9 @@ def parse_line(line, output_plugins):
         # Log all comment lines for now
         line = line.decode('ascii').replace('\r\n', '')
         logging.info(f"Received comment from Arduino: {line}")
+    elif line == b'':
+        # Seems to indicate that we've lost connection with the Arduino, so quit and let it restart
+        raise ValueError("Lost communication, exiting")
     else:
         logging.info(f"Ignoring unknown message type: {line}")
 
